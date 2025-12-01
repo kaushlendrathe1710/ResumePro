@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { 
   Plus, FileText, LogOut, Loader2, 
   FolderOpen, Download, FileDown, Edit, Trash2,
-  LayoutTemplate, User, Clock, Sparkles
+  LayoutTemplate, User, Clock, Sparkles, CreditCard, Crown
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -43,6 +45,40 @@ interface Resume {
   updatedAt: string;
 }
 
+interface SubscriptionInfo {
+  hasSubscription: boolean;
+  subscription?: {
+    id: string;
+    planName: string;
+    planPrice: number;
+    downloadsRemaining: number;
+    downloadsUsed: number;
+    downloadLimit: number;
+    hasWatermark: boolean;
+    allowWordExport: boolean;
+    startDate: string;
+    endDate: string | null;
+  };
+  defaultPlan?: {
+    id: string;
+    name: string;
+    downloadLimit: number;
+    hasWatermark: boolean;
+    allowWordExport: boolean;
+  };
+  expired?: boolean;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  downloadLimit: number;
+  validityDays: number;
+  hasWatermark: boolean;
+  allowWordExport: boolean;
+}
+
 export default function Dashboard() {
   const [_, setLocation] = useLocation();
   const [user, setUser] = useState<UserData | null>(null);
@@ -50,10 +86,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("resumes");
   const [deleteResumeId, setDeleteResumeId] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
 
   useEffect(() => {
     checkAuth();
     fetchResumes();
+    fetchSubscription();
+    fetchPlans();
   }, []);
 
   const checkAuth = async () => {
@@ -85,6 +125,30 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch resumes:", error);
+    }
+  };
+
+  const fetchSubscription = async () => {
+    try {
+      const response = await fetch("/api/subscription");
+      if (response.ok) {
+        const data = await response.json();
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch subscription:", error);
+    }
+  };
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch("/api/plans");
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePlans(data.plans);
+      }
+    } catch (error) {
+      console.error("Failed to fetch plans:", error);
     }
   };
 
@@ -146,6 +210,7 @@ export default function Dashboard() {
   const sidebarItems = [
     { id: "resumes", icon: FolderOpen, label: "My Resumes" },
     { id: "downloads", icon: Download, label: "Downloads" },
+    { id: "subscription", icon: CreditCard, label: "Subscription" },
     { id: "templates", icon: LayoutTemplate, label: "Templates", href: "/templates" },
     { id: "profile", icon: User, label: "Profile" },
   ];
@@ -209,11 +274,13 @@ export default function Dashboard() {
               <h1 className="text-2xl font-bold text-slate-900">
                 {activeTab === "resumes" && "My Resumes"}
                 {activeTab === "downloads" && "Download Resumes"}
+                {activeTab === "subscription" && "My Subscription"}
                 {activeTab === "profile" && "Profile Settings"}
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {activeTab === "resumes" && `${resumes.length} resume${resumes.length !== 1 ? 's' : ''} created`}
                 {activeTab === "downloads" && "Download your resumes as PDF or Word"}
+                {activeTab === "subscription" && "Manage your subscription plan"}
                 {activeTab === "profile" && "Manage your account settings"}
               </p>
             </div>
@@ -445,6 +512,150 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {activeTab === "subscription" && (
+            <div className="space-y-6">
+              {subscription?.hasSubscription ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Crown className="w-5 h-5 text-amber-500" />
+                      Current Plan: {subscription.subscription?.planName}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <p className="text-sm text-slate-500 mb-1">Downloads Used</p>
+                        <p className="text-2xl font-bold text-slate-800">
+                          {subscription.subscription?.downloadsUsed} / {subscription.subscription?.downloadLimit}
+                        </p>
+                        <Progress 
+                          value={((subscription.subscription?.downloadsUsed || 0) / (subscription.subscription?.downloadLimit || 1)) * 100}
+                          className="h-2 mt-2"
+                        />
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <p className="text-sm text-slate-500 mb-1">Remaining Downloads</p>
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {subscription.subscription?.downloadsRemaining}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <p className="text-sm text-slate-500 mb-1">Expires</p>
+                        <p className="text-2xl font-bold text-slate-800">
+                          {subscription.subscription?.endDate 
+                            ? new Date(subscription.subscription.endDate).toLocaleDateString()
+                            : "Never"
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 pt-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={subscription.subscription?.hasWatermark ? "secondary" : "default"} className={!subscription.subscription?.hasWatermark ? "bg-emerald-500" : ""}>
+                          {subscription.subscription?.hasWatermark ? "Has Watermark" : "No Watermark"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={subscription.subscription?.allowWordExport ? "default" : "secondary"} className={subscription.subscription?.allowWordExport ? "bg-violet-500" : ""}>
+                          {subscription.subscription?.allowWordExport ? "Word Export Enabled" : "PDF Only"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-amber-500/20 rounded-xl flex items-center justify-center">
+                        <Crown className="w-8 h-8 text-amber-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-800">
+                          {subscription?.expired ? "Your subscription has expired" : "Get Started with Free Plan"}
+                        </h3>
+                        <p className="text-slate-600">
+                          {subscription?.defaultPlan 
+                            ? `${subscription.defaultPlan.name} plan: ${subscription.defaultPlan.downloadLimit} download${subscription.defaultPlan.downloadLimit > 1 ? 's' : ''}`
+                            : "Sign up to access resume downloads"
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Available Plans</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {availablePlans.map((plan) => (
+                      <div
+                        key={plan.id}
+                        className={`rounded-xl border-2 p-6 transition-all ${
+                          subscription?.subscription?.planName === plan.name
+                            ? "border-primary bg-primary/5"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                        data-testid={`card-plan-${plan.id}`}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
+                            <p className="text-3xl font-bold text-primary mt-1">
+                              {plan.price === 0 ? "Free" : `${plan.price} AED`}
+                            </p>
+                          </div>
+                          {subscription?.subscription?.planName === plan.name && (
+                            <Badge className="bg-primary">Current</Badge>
+                          )}
+                        </div>
+                        
+                        <ul className="space-y-2 text-sm text-slate-600 mb-4">
+                          <li className="flex items-center gap-2">
+                            <Download className="w-4 h-4 text-emerald-500" />
+                            {plan.downloadLimit} resume download{plan.downloadLimit > 1 ? 's' : ''}
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-blue-500" />
+                            {plan.validityDays === 0 ? "Lifetime access" : `${plan.validityDays} days validity`}
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-violet-500" />
+                            {plan.hasWatermark ? "With watermark" : "No watermark"}
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <FileDown className="w-4 h-4 text-amber-500" />
+                            {plan.allowWordExport ? "PDF + Word export" : "PDF only"}
+                          </li>
+                        </ul>
+
+                        {subscription?.subscription?.planName !== plan.name && plan.price > 0 && (
+                          <div className="pt-4 border-t">
+                            <p className="text-xs text-slate-500 mb-2">
+                              Contact admin to upgrade to this plan
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {availablePlans.length === 0 && (
+                      <div className="col-span-2 text-center py-8 text-slate-500">
+                        No plans available at the moment
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {activeTab === "profile" && (

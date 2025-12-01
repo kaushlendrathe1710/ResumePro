@@ -7,7 +7,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: { name?: string; phone?: string }): Promise<User>;
+  updateUser(id: string, data: { name?: string; phone?: string; role?: string }): Promise<User>;
 
   // OTP methods
   createOtpCode(otpCode: InsertOtpCode): Promise<OtpCode>;
@@ -21,6 +21,16 @@ export interface IStorage {
   getResume(id: string): Promise<Resume | undefined>;
   updateResume(id: string, data: Partial<InsertResume>): Promise<Resume>;
   deleteResume(id: string): Promise<void>;
+
+  // Admin methods
+  getAllUsers(): Promise<User[]>;
+  getUserCount(): Promise<number>;
+  getResumeCount(): Promise<number>;
+  getDownloadCount(): Promise<number>;
+  getTodayUsersCount(): Promise<number>;
+  deleteUser(id: string): Promise<void>;
+  setUserRole(id: string, role: string): Promise<User>;
+  getAllResumes(): Promise<Resume[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -43,7 +53,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: { name?: string; phone?: string }): Promise<User> {
+  async updateUser(id: string, data: { name?: string; phone?: string; role?: string }): Promise<User> {
     const [user] = await db
       .update(users)
       .set(data)
@@ -128,6 +138,53 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(resumes)
       .where(eq(resumes.id, id));
+  }
+
+  // Admin methods
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.createdAt);
+  }
+
+  async getUserCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(users);
+    return Number(result[0]?.count || 0);
+  }
+
+  async getResumeCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(resumes);
+    return Number(result[0]?.count || 0);
+  }
+
+  async getDownloadCount(): Promise<number> {
+    return await this.getResumeCount();
+  }
+
+  async getTodayUsersCount(): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(gt(users.createdAt, today));
+    return Number(result[0]?.count || 0);
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(resumes).where(eq(resumes.userId, id));
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async setUserRole(id: string, role: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ role })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getAllResumes(): Promise<Resume[]> {
+    return await db.select().from(resumes).orderBy(resumes.createdAt);
   }
 }
 

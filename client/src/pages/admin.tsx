@@ -3,10 +3,13 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   LogOut, Loader2, Users, FileText, Download, 
   LayoutDashboard, Settings, Shield, Search,
-  Trash2, UserPlus, UserMinus, Crown
+  Trash2, UserPlus, UserMinus, Crown, CreditCard, Plus, Edit, Check
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -28,6 +31,168 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+function PlanForm({ 
+  plan, 
+  onSave, 
+  onCancel 
+}: { 
+  plan: SubscriptionPlan | null; 
+  onSave: (plan: Partial<SubscriptionPlan>) => void;
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: plan?.name || "",
+    price: plan?.price || 0,
+    downloadLimit: plan?.downloadLimit || 1,
+    validityDays: plan?.validityDays || 0,
+    hasWatermark: plan?.hasWatermark ?? true,
+    watermarkText: plan?.watermarkText || "Mymegaminds",
+    allowWordExport: plan?.allowWordExport ?? false,
+    isActive: plan?.isActive ?? true,
+    isDefault: plan?.isDefault ?? false,
+    sortOrder: plan?.sortOrder || 0,
+  });
+
+  const handleSubmit = () => {
+    const data: Partial<SubscriptionPlan> = {
+      ...formData,
+      id: plan?.id,
+    };
+    onSave(data);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="text-slate-300 mb-2 block">Plan Name</Label>
+          <Input
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g., Premium"
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-plan-name"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Price (AED)</Label>
+          <Input
+            type="number"
+            value={formData.price}
+            onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-plan-price"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Download Limit</Label>
+          <Input
+            type="number"
+            value={formData.downloadLimit}
+            onChange={(e) => setFormData({ ...formData, downloadLimit: parseInt(e.target.value) || 1 })}
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-plan-downloads"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Validity (days, 0 = lifetime)</Label>
+          <Input
+            type="number"
+            value={formData.validityDays}
+            onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 0 })}
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-plan-validity"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Watermark Text</Label>
+          <Input
+            value={formData.watermarkText}
+            onChange={(e) => setFormData({ ...formData, watermarkText: e.target.value })}
+            placeholder="e.g., Mymegaminds"
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-plan-watermark"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Sort Order</Label>
+          <Input
+            type="number"
+            value={formData.sortOrder}
+            onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-plan-sort"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-6 pt-2">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.hasWatermark}
+            onCheckedChange={(checked) => setFormData({ ...formData, hasWatermark: checked })}
+            data-testid="switch-watermark"
+          />
+          <Label className="text-slate-300">Has Watermark</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.allowWordExport}
+            onCheckedChange={(checked) => setFormData({ ...formData, allowWordExport: checked })}
+            data-testid="switch-word"
+          />
+          <Label className="text-slate-300">Allow Word Export</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.isActive}
+            onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+            data-testid="switch-active"
+          />
+          <Label className="text-slate-300">Active</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.isDefault}
+            onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked })}
+            data-testid="switch-default"
+          />
+          <Label className="text-slate-300">Default Plan</Label>
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <Button onClick={handleSubmit} className="bg-emerald-600 hover:bg-emerald-700" data-testid="button-save-plan">
+          <Check className="w-4 h-4 mr-2" /> Save Plan
+        </Button>
+        <Button variant="outline" onClick={onCancel} className="border-slate-600 text-slate-300" data-testid="button-cancel-plan">
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  downloadLimit: number;
+  validityDays: number;
+  hasWatermark: boolean;
+  watermarkText: string | null;
+  allowWordExport: boolean;
+  isActive: boolean;
+  isDefault: boolean;
+  sortOrder: number;
+}
 
 interface UserData {
   id: string;
@@ -53,6 +218,22 @@ interface Stats {
   newUsersToday: number;
 }
 
+interface UserSubscription {
+  id: string;
+  userId: string;
+  planId: string;
+  downloadsUsed: number;
+  downloadsRemaining: number;
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
+  paymentReference: string | null;
+  userEmail?: string;
+  userName?: string | null;
+  planName?: string;
+  planPrice?: number;
+}
+
 export default function AdminDashboard() {
   const [_, setLocation] = useLocation();
   const [user, setUser] = useState<UserData | null>(null);
@@ -64,6 +245,15 @@ export default function AdminDashboard() {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [promoteUserId, setPromoteUserId] = useState<string | null>(null);
   const [demoteUserId, setDemoteUserId] = useState<string | null>(null);
+  
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+  const [showNewPlanForm, setShowNewPlanForm] = useState(false);
+  const [activateUserId, setActivateUserId] = useState<string | null>(null);
+  const [activatePlanId, setActivatePlanId] = useState<string>("");
+  const [paymentRef, setPaymentRef] = useState("");
+  const [subSearchQuery, setSubSearchQuery] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -74,6 +264,12 @@ export default function AdminDashboard() {
       if (activeTab === "overview") {
         fetchStats();
       } else if (activeTab === "users" || activeTab === "admins") {
+        fetchUsers();
+      } else if (activeTab === "plans") {
+        fetchPlans();
+      } else if (activeTab === "subscriptions") {
+        fetchSubscriptions();
+        fetchPlans();
         fetchUsers();
       }
     }
@@ -122,6 +318,30 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
+    }
+  };
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch("/api/admin/plans");
+      if (response.ok) {
+        const data = await response.json();
+        setPlans(data.plans);
+      }
+    } catch (error) {
+      console.error("Failed to fetch plans:", error);
+    }
+  };
+
+  const fetchSubscriptions = async () => {
+    try {
+      const response = await fetch("/api/admin/subscriptions");
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptions(data.subscriptions);
+      }
+    } catch (error) {
+      console.error("Failed to fetch subscriptions:", error);
     }
   };
 
@@ -184,6 +404,104 @@ export default function AdminDashboard() {
     setDemoteUserId(null);
   };
 
+  const handleSavePlan = async (plan: Partial<SubscriptionPlan>) => {
+    try {
+      const isNew = !plan.id;
+      const url = isNew ? "/api/admin/plans" : `/api/admin/plans/${plan.id}`;
+      const method = isNew ? "POST" : "PATCH";
+      
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(plan),
+      });
+      
+      if (response.ok) {
+        toast.success(isNew ? "Plan created" : "Plan updated");
+        fetchPlans();
+        setEditingPlan(null);
+        setShowNewPlanForm(false);
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to save plan");
+      }
+    } catch (error) {
+      toast.error("Failed to save plan");
+    }
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm("Are you sure you want to delete this plan?")) return;
+    
+    try {
+      const response = await fetch(`/api/admin/plans/${planId}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        toast.success("Plan deleted");
+        fetchPlans();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete plan");
+      }
+    } catch (error) {
+      toast.error("Failed to delete plan");
+    }
+  };
+
+  const handleActivateSubscription = async () => {
+    if (!activateUserId || !activatePlanId) {
+      toast.error("Please select a plan");
+      return;
+    }
+    
+    try {
+      const response = await fetch("/api/admin/subscriptions/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: activateUserId,
+          planId: activatePlanId,
+          paymentReference: paymentRef || undefined,
+        }),
+      });
+      
+      if (response.ok) {
+        toast.success("Subscription activated");
+        fetchSubscriptions();
+        setActivateUserId(null);
+        setActivatePlanId("");
+        setPaymentRef("");
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to activate subscription");
+      }
+    } catch (error) {
+      toast.error("Failed to activate subscription");
+    }
+  };
+
+  const handleDeactivateSubscription = async (subId: string) => {
+    if (!confirm("Are you sure you want to deactivate this subscription?")) return;
+    
+    try {
+      const response = await fetch(`/api/admin/subscriptions/${subId}/deactivate`, {
+        method: "POST",
+      });
+      
+      if (response.ok) {
+        toast.success("Subscription deactivated");
+        fetchSubscriptions();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to deactivate subscription");
+      }
+    } catch (error) {
+      toast.error("Failed to deactivate subscription");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -214,8 +532,16 @@ export default function AdminDashboard() {
     { id: "overview", icon: LayoutDashboard, label: "Dashboard" },
     { id: "users", icon: Users, label: "Users" },
     { id: "admins", icon: Shield, label: "Admins", superAdminOnly: true },
+    { id: "plans", icon: CreditCard, label: "Subscription Plans", superAdminOnly: true },
+    { id: "subscriptions", icon: CreditCard, label: "User Subscriptions" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
+
+  const filteredSubscriptions = subscriptions.filter(s => 
+    (s.userEmail && s.userEmail.toLowerCase().includes(subSearchQuery.toLowerCase())) ||
+    (s.userName && s.userName.toLowerCase().includes(subSearchQuery.toLowerCase())) ||
+    (s.planName && s.planName.toLowerCase().includes(subSearchQuery.toLowerCase()))
+  );
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -284,12 +610,16 @@ export default function AdminDashboard() {
                 {activeTab === "overview" && "Dashboard Overview"}
                 {activeTab === "users" && "User Management"}
                 {activeTab === "admins" && "Admin Management"}
+                {activeTab === "plans" && "Subscription Plans"}
+                {activeTab === "subscriptions" && "User Subscriptions"}
                 {activeTab === "settings" && "Settings"}
               </h1>
               <p className="text-slate-400 text-sm mt-1">
                 {activeTab === "overview" && "Monitor your platform statistics"}
                 {activeTab === "users" && "View and manage all registered users"}
                 {activeTab === "admins" && "Manage admin access and permissions"}
+                {activeTab === "plans" && "Create and manage subscription plans"}
+                {activeTab === "subscriptions" && "View and activate user subscriptions"}
                 {activeTab === "settings" && "Configure system settings"}
               </p>
             </div>
@@ -575,6 +905,260 @@ export default function AdminDashboard() {
                 </Table>
               </CardContent>
             </Card>
+          )}
+
+          {activeTab === "plans" && isSuperAdmin && (
+            <div className="space-y-6">
+              <div className="flex justify-end">
+                <Button 
+                  onClick={() => setShowNewPlanForm(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  data-testid="button-new-plan"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Create New Plan
+                </Button>
+              </div>
+
+              {(showNewPlanForm || editingPlan) && (
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">
+                      {editingPlan ? "Edit Plan" : "Create New Plan"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PlanForm
+                      plan={editingPlan}
+                      onSave={handleSavePlan}
+                      onCancel={() => { setEditingPlan(null); setShowNewPlanForm(false); }}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="grid gap-4">
+                {plans.map((plan) => (
+                  <Card key={plan.id} className="bg-slate-800 border-slate-700" data-testid={`card-plan-${plan.id}`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                            {plan.isDefault && (
+                              <Badge className="bg-emerald-500">Default</Badge>
+                            )}
+                            {!plan.isActive && (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <span className="text-white font-medium">{plan.price === 0 ? "Free" : `${plan.price} AED`}</span>
+                            </span>
+                            <span>{plan.downloadLimit} downloads</span>
+                            <span>{plan.validityDays === 0 ? "Lifetime" : `${plan.validityDays} days`}</span>
+                            <span>{plan.hasWatermark ? `Watermark: "${plan.watermarkText}"` : "No watermark"}</span>
+                            <span>{plan.allowWordExport ? "Word export" : "PDF only"}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+                            onClick={() => setEditingPlan(plan)}
+                            data-testid={`button-edit-plan-${plan.id}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
+                            onClick={() => handleDeletePlan(plan.id)}
+                            data-testid={`button-delete-plan-${plan.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {plans.length === 0 && (
+                  <Card className="bg-slate-800 border-slate-700">
+                    <CardContent className="p-12 text-center text-slate-400">
+                      No subscription plans created yet
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "subscriptions" && (
+            <div className="space-y-6">
+              <Card className="bg-slate-800 border-slate-700">
+                <CardHeader className="border-b border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-emerald-400" />
+                      Active Subscriptions ({filteredSubscriptions.filter(s => s.isActive).length})
+                    </CardTitle>
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                      <Input
+                        placeholder="Search subscriptions..."
+                        value={subSearchQuery}
+                        onChange={(e) => setSubSearchQuery(e.target.value)}
+                        className="pl-9 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 w-64"
+                        data-testid="input-search-subscriptions"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-700 hover:bg-slate-700/50">
+                        <TableHead className="text-slate-300">User</TableHead>
+                        <TableHead className="text-slate-300">Plan</TableHead>
+                        <TableHead className="text-slate-300">Downloads</TableHead>
+                        <TableHead className="text-slate-300">Expires</TableHead>
+                        <TableHead className="text-slate-300">Status</TableHead>
+                        {isSuperAdmin && <TableHead className="text-slate-300 text-center">Actions</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSubscriptions.map((sub) => (
+                        <TableRow key={sub.id} className="border-slate-700 hover:bg-slate-700/50" data-testid={`row-sub-${sub.id}`}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-white">{sub.userName || "No name"}</p>
+                              <p className="text-sm text-slate-400">{sub.userEmail}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="text-white">{sub.planName}</p>
+                              <p className="text-sm text-slate-400">{sub.planPrice === 0 ? "Free" : `${sub.planPrice} AED`}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-300">
+                            {sub.downloadsUsed} / {sub.downloadsUsed + sub.downloadsRemaining} used
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            {sub.endDate ? formatDate(sub.endDate) : "Never"}
+                          </TableCell>
+                          <TableCell>
+                            {sub.isActive ? (
+                              <Badge className="bg-emerald-500">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </TableCell>
+                          {isSuperAdmin && (
+                            <TableCell>
+                              <div className="flex items-center justify-center gap-2">
+                                {sub.isActive && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
+                                    onClick={() => handleDeactivateSubscription(sub.id)}
+                                    data-testid={`button-deactivate-${sub.id}`}
+                                  >
+                                    Deactivate
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                      {filteredSubscriptions.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={isSuperAdmin ? 6 : 5} className="text-center py-8 text-slate-400">
+                            No subscriptions found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {isSuperAdmin && (
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <Plus className="w-5 h-5 text-emerald-400" />
+                      Manually Activate Subscription
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">User</Label>
+                        <Select 
+                          value={activateUserId || ""} 
+                          onValueChange={(v) => setActivateUserId(v)}
+                        >
+                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white" data-testid="select-user">
+                            <SelectValue placeholder="Select user" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-700 border-slate-600">
+                            {users.map((u) => (
+                              <SelectItem key={u.id} value={u.id} className="text-white">
+                                {u.email}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">Plan</Label>
+                        <Select 
+                          value={activatePlanId} 
+                          onValueChange={(v) => setActivatePlanId(v)}
+                        >
+                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white" data-testid="select-plan">
+                            <SelectValue placeholder="Select plan" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-700 border-slate-600">
+                            {plans.filter(p => p.isActive).map((p) => (
+                              <SelectItem key={p.id} value={p.id} className="text-white">
+                                {p.name} ({p.price === 0 ? "Free" : `${p.price} AED`})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">Payment Reference (optional)</Label>
+                        <Input
+                          value={paymentRef}
+                          onChange={(e) => setPaymentRef(e.target.value)}
+                          placeholder="e.g., Transaction ID"
+                          className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                          data-testid="input-payment-ref"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button 
+                          onClick={handleActivateSubscription}
+                          className="bg-emerald-600 hover:bg-emerald-700 w-full"
+                          data-testid="button-activate"
+                        >
+                          <Check className="w-4 h-4 mr-2" /> Activate
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
 
           {activeTab === "settings" && (

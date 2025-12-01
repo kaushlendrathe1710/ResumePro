@@ -3,17 +3,19 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
-  Plus, FileText, LogOut, Loader2, LayoutDashboard, 
-  FolderOpen, Settings, Download, FileDown, Edit, Trash2,
-  LayoutTemplate, User, ChevronRight, Clock, Sparkles
+  Plus, FileText, LogOut, Loader2, 
+  FolderOpen, Download, FileDown, Edit, Trash2,
+  LayoutTemplate, User, Clock, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +39,7 @@ interface Resume {
   title: string;
   templateId: string;
   data: string;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -110,6 +113,28 @@ export default function Dashboard() {
     setDeleteResumeId(null);
   };
 
+  const handleDownload = (resumeId: string, format: "pdf" | "docx") => {
+    setLocation(`/build?resume=${resumeId}&download=${format}`);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+  const getTemplateName = (templateId: string) => {
+    const parts = templateId.split("-");
+    if (parts.length >= 2) {
+      return parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + " - " + parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+    }
+    return templateId;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -120,6 +145,7 @@ export default function Dashboard() {
 
   const sidebarItems = [
     { id: "resumes", icon: FolderOpen, label: "My Resumes" },
+    { id: "downloads", icon: Download, label: "Downloads" },
     { id: "templates", icon: LayoutTemplate, label: "Templates", href: "/templates" },
     { id: "profile", icon: User, label: "Profile" },
   ];
@@ -182,10 +208,12 @@ export default function Dashboard() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
                 {activeTab === "resumes" && "My Resumes"}
+                {activeTab === "downloads" && "Download Resumes"}
                 {activeTab === "profile" && "Profile Settings"}
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {activeTab === "resumes" && `${resumes.length} resume${resumes.length !== 1 ? 's' : ''} created`}
+                {activeTab === "downloads" && "Download your resumes as PDF or Word"}
                 {activeTab === "profile" && "Manage your account settings"}
               </p>
             </div>
@@ -209,7 +237,11 @@ export default function Dashboard() {
             <>
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <Card className="bg-gradient-to-br from-primary to-blue-600 text-white border-0 hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setLocation("/templates")}>
+                <Card 
+                  className="bg-gradient-to-br from-primary to-blue-600 text-white border-0 hover:shadow-xl transition-shadow cursor-pointer" 
+                  onClick={() => setLocation("/templates")}
+                  data-testid="card-create-resume"
+                >
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                       <Plus className="w-6 h-6" />
@@ -221,7 +253,11 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-emerald-500 to-green-600 text-white border-0 hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setLocation("/templates")}>
+                <Card 
+                  className="bg-gradient-to-br from-emerald-500 to-green-600 text-white border-0 hover:shadow-xl transition-shadow cursor-pointer" 
+                  onClick={() => setActiveTab("downloads")}
+                  data-testid="card-download-pdf"
+                >
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                       <Download className="w-6 h-6" />
@@ -233,7 +269,11 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-violet-500 to-purple-600 text-white border-0 hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setLocation("/templates")}>
+                <Card 
+                  className="bg-gradient-to-br from-violet-500 to-purple-600 text-white border-0 hover:shadow-xl transition-shadow cursor-pointer" 
+                  onClick={() => setActiveTab("downloads")}
+                  data-testid="card-download-word"
+                >
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                       <FileDown className="w-6 h-6" />
@@ -269,7 +309,7 @@ export default function Dashboard() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {resumes.map((resume) => (
-                    <Card key={resume.id} className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white">
+                    <Card key={resume.id} className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white" data-testid={`card-resume-${resume.id}`}>
                       <div className="aspect-[1/1.2] bg-gradient-to-br from-slate-100 to-slate-50 relative flex items-center justify-center border-b">
                         <FileText className="w-16 h-16 text-slate-300" />
                         <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/5 transition-colors" />
@@ -286,26 +326,20 @@ export default function Dashboard() {
                               <Edit className="w-4 h-4 mr-2" /> Edit
                             </Link>
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon">
-                                <Download className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setLocation(`/build?resume=${resume.id}&download=pdf`)}>
-                                <FileDown className="w-4 h-4 mr-2" /> Download PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setLocation(`/build?resume=${resume.id}&download=docx`)}>
-                                <FileText className="w-4 h-4 mr-2" /> Download Word
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => handleDownload(resume.id, "pdf")}
+                            title="Download PDF"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button 
                             variant="outline" 
                             size="icon" 
                             className="text-red-500 hover:text-red-600 hover:bg-red-50"
                             onClick={() => setDeleteResumeId(resume.id)}
+                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -316,6 +350,101 @@ export default function Dashboard() {
                 </div>
               )}
             </>
+          )}
+
+          {activeTab === "downloads" && (
+            <Card className="bg-white">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Download className="w-5 h-5 text-primary" />
+                  All Your Resumes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {resumes.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-700 mb-2">No resumes to download</h3>
+                    <p className="text-slate-500 mb-6">Create your first resume to see it here.</p>
+                    <Link href="/templates">
+                      <Button>
+                        <Plus className="w-4 h-4 mr-2" /> Create Resume
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="font-semibold">Resume Title</TableHead>
+                          <TableHead className="font-semibold">Template</TableHead>
+                          <TableHead className="font-semibold">Created</TableHead>
+                          <TableHead className="font-semibold">Last Updated</TableHead>
+                          <TableHead className="font-semibold text-center">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {resumes.map((resume) => (
+                          <TableRow key={resume.id} className="hover:bg-slate-50" data-testid={`row-resume-${resume.id}`}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                  <FileText className="w-5 h-5 text-primary" />
+                                </div>
+                                <span>{resume.title}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                                {getTemplateName(resume.templateId)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {formatDate(resume.createdAt)}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {formatDate(resume.updatedAt)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="default"
+                                  onClick={() => handleDownload(resume.id, "pdf")}
+                                  className="bg-emerald-600 hover:bg-emerald-700"
+                                  data-testid={`button-download-pdf-${resume.id}`}
+                                >
+                                  <Download className="w-4 h-4 mr-1" /> PDF
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="default"
+                                  onClick={() => handleDownload(resume.id, "docx")}
+                                  className="bg-violet-600 hover:bg-violet-700"
+                                  data-testid={`button-download-word-${resume.id}`}
+                                >
+                                  <FileDown className="w-4 h-4 mr-1" /> Word
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  asChild
+                                >
+                                  <Link href={`/build?resume=${resume.id}`}>
+                                    <Edit className="w-4 h-4" />
+                                  </Link>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {activeTab === "profile" && (

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { initializeEmailTransporter, sendOtpEmail, generateOtp } from "./email";
@@ -7,6 +7,37 @@ import { insertUserSchema, insertOtpCodeSchema } from "@shared/schema";
 
 // Initialize email on startup
 initializeEmailTransporter();
+
+// Super admin email
+const SUPER_ADMIN_EMAIL = "kaushlendra.k12@fms.edu";
+
+// Middleware to check if user is admin
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  
+  const user = await storage.getUser(req.session.userId);
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    return res.status(403).json({ error: "Access denied. Admin privileges required." });
+  }
+  
+  next();
+}
+
+// Middleware to check if user is super admin
+async function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  
+  const user = await storage.getUser(req.session.userId);
+  if (!user || user.role !== "superadmin") {
+    return res.status(403).json({ error: "Access denied. Super admin privileges required." });
+  }
+  
+  next();
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -71,20 +102,27 @@ export async function registerRoutes(
       let isNewUser = false;
       
       if (!user) {
-        user = await storage.createUser({ email });
+        // Check if this is the super admin email
+        const role = email === SUPER_ADMIN_EMAIL ? "superadmin" : "user";
+        user = await storage.createUser({ email, role });
         isNewUser = true;
+      } else if (email === SUPER_ADMIN_EMAIL && user.role !== "superadmin") {
+        // Ensure super admin always has superadmin role
+        user = await storage.setUserRole(user.id, "superadmin");
       }
 
       // Check if user needs to complete registration (no name or phone)
       const needsRegistration = !user.name || !user.phone;
+      const isAdmin = user.role === "admin" || user.role === "superadmin";
 
       // Set session
       req.session.userId = user.id;
 
       res.json({ 
         success: true, 
-        user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
-        needsRegistration
+        user: { id: user.id, email: user.email, name: user.name, phone: user.phone, role: user.role },
+        needsRegistration,
+        isAdmin
       });
     } catch (error) {
       console.error("Error in verify-otp:", error);
@@ -134,10 +172,12 @@ export async function registerRoutes(
     }
 
     const needsRegistration = !user.name || !user.phone;
+    const isAdmin = user.role === "admin" || user.role === "superadmin";
 
     res.json({ 
-      user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
-      needsRegistration
+      user: { id: user.id, email: user.email, name: user.name, phone: user.phone, role: user.role },
+      needsRegistration,
+      isAdmin
     });
   });
 
@@ -278,6 +318,138 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting resume:", error);
       res.status(500).json({ error: "Failed to delete resume" });
+    }
+  });
+
+  // ============= ADMIN ROUTES =============
+
+  // Get admin dashboard stats
+  app.get("/api/admin/stats", requireAdmin, async (req, res) => {
+    try {
+      const [userCount, resumeCount, downloadCount, todayUsers] = await Promise.all([
+        storage.getUserCount(),
+        storage.getResumeCount(),
+        storage.getDownloadCount(),
+        storage.getTodayUsersCount(),
+      ]);
+
+      res.json({
+        totalUsers: userCount,
+        totalResumes: resumeCount,
+        totalDownloads: downloadCount,
+        newUsersToday: todayUsers,
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Get all users (admin)
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json({ users: users.map(u => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        phone: u.phone,
+        role: u.role,
+        createdAt: u.createdAt,
+      }))});
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Delete user (super admin only)
+  app.delete("/api/admin/users/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const userToDelete = await storage.getUser(req.params.id);
+      
+      if (!userToDelete) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Cannot delete super admin
+      if (userToDelete.role === "superadmin") {
+        return res.status(403).json({ error: "Cannot delete super admin" });
+      }
+
+      await storage.deleteUser(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Promote user to admin (super admin only)
+  app.post("/api/admin/users/:id/promote", requireSuperAdmin, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.role === "superadmin") {
+        return res.status(400).json({ error: "Cannot modify super admin role" });
+      }
+
+      const updatedUser = await storage.setUserRole(req.params.id, "admin");
+      res.json({ 
+        success: true, 
+        user: { id: updatedUser.id, email: updatedUser.email, role: updatedUser.role }
+      });
+    } catch (error) {
+      console.error("Error promoting user:", error);
+      res.status(500).json({ error: "Failed to promote user" });
+    }
+  });
+
+  // Demote admin to user (super admin only)
+  app.post("/api/admin/users/:id/demote", requireSuperAdmin, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.role === "superadmin") {
+        return res.status(400).json({ error: "Cannot modify super admin role" });
+      }
+
+      const updatedUser = await storage.setUserRole(req.params.id, "user");
+      res.json({ 
+        success: true, 
+        user: { id: updatedUser.id, email: updatedUser.email, role: updatedUser.role }
+      });
+    } catch (error) {
+      console.error("Error demoting user:", error);
+      res.status(500).json({ error: "Failed to demote user" });
+    }
+  });
+
+  // Get all resumes (admin)
+  app.get("/api/admin/resumes", requireAdmin, async (req, res) => {
+    try {
+      const resumes = await storage.getAllResumes();
+      const users = await storage.getAllUsers();
+      const userMap = new Map(users.map(u => [u.id, u]));
+      
+      res.json({ 
+        resumes: resumes.map(r => ({
+          ...r,
+          userEmail: userMap.get(r.userId)?.email,
+          userName: userMap.get(r.userId)?.name,
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching resumes:", error);
+      res.status(500).json({ error: "Failed to fetch resumes" });
     }
   });
 

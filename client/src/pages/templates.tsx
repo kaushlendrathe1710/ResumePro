@@ -1,11 +1,10 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, LogOut } from "lucide-react";
 import { templates, TemplateConfig } from "@/lib/templates";
 import { motion } from "framer-motion";
-import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ResumeData } from "@/lib/schema";
 import { ModernTemplate } from "@/components/templates/modern";
 import { ClassicTemplate } from "@/components/templates/classic";
@@ -85,9 +84,32 @@ export default function Templates() {
   const [_, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch("/api/auth/me");
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setLocation("/login");
+      }
+    } catch (error) {
+      setLocation("/login");
+    }
+  };
 
   const handleSelectTemplate = (id: string) => {
     setLocation(`/build?template=${id}`);
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setLocation("/");
   };
 
   const filteredTemplates = useMemo(() => {
@@ -101,14 +123,22 @@ export default function Templates() {
 
   const categories = ["all", "modern", "classic", "minimal", "executive", "creative"];
 
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                <ArrowLeft className="w-4 h-4 mr-2" /> Dashboard
               </Button>
             </Link>
             <h1 className="text-xl font-bold text-slate-900">Template Gallery</h1>
@@ -124,6 +154,9 @@ export default function Templates() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
           </div>
         </div>
       </nav>
@@ -160,7 +193,7 @@ export default function Templates() {
               key={template.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(index * 0.05, 0.5) }} // Cap stagger delay
+              transition={{ delay: Math.min(index * 0.05, 0.5) }}
               className="group relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:border-primary/50 transition-all duration-300 cursor-pointer"
               onClick={() => handleSelectTemplate(template.id)}
             >

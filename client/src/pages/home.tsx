@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, FileText, CheckCircle, Sparkles, Download } from "lucide-react";
+import { ArrowRight, FileText, CheckCircle, Sparkles, Download, LogIn } from "lucide-react";
 import generatedImage from '@assets/generated_images/minimalist_workspace_with_laptop_showing_resume_builder.png';
 import { motion } from "framer-motion";
 
@@ -16,12 +16,21 @@ export default function Home() {
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
           <a href="#features" className="hover:text-primary transition-colors">Features</a>
-          <Link href="/templates" className="hover:text-primary transition-colors">Templates</Link>
+          <Link href="/login" className="hover:text-primary transition-colors">Templates</Link>
           <a href="#" className="hover:text-primary transition-colors">About</a>
         </div>
-        <Link href="/build">
-          <Button className="rounded-full px-6" size="lg">Create Resume</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/login">
+            <Button variant="outline" className="rounded-full px-5" data-testid="button-login">
+              <LogIn className="w-4 h-4 mr-2" /> Login
+            </Button>
+          </Link>
+          <Link href="/login">
+            <Button className="rounded-full px-6" size="lg" data-testid="button-create-resume">
+              Create Resume
+            </Button>
+          </Link>
+        </div>
       </nav>
 
       <main>
@@ -37,17 +46,17 @@ export default function Home() {
             </h1>
             
             <p className="text-xl text-slate-600 leading-relaxed max-w-xl">
-              Create a polished, professional resume that stands out. No login required initially. Choose from a variety of crafted templates and download instantly.
+              Create a polished, professional resume that stands out. Choose from a variety of crafted templates and download instantly.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Link href="/build">
-                <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all hover:-translate-y-1">
+              <Link href="/login">
+                <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all hover:-translate-y-1" data-testid="button-build-resume">
                   Build My Resume <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <Link href="/templates">
-                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2">
+              <Link href="/login">
+                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2" data-testid="button-view-templates">
                   View Templates
                 </Button>
               </Link>
@@ -60,11 +69,11 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>No signup required</span>
+                <span>100+ Templates</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Instant PDF download</span>
+                <span>PDF & Word Export</span>
               </div>
             </div>
           </div>
@@ -96,7 +105,7 @@ export default function Home() {
                </div>
                <div>
                  <div className="text-sm font-bold text-slate-900">Instant Export</div>
-                 <div className="text-xs text-slate-500">Download as PDF in one click</div>
+                 <div className="text-xs text-slate-500">Download as PDF or Word</div>
                </div>
             </motion.div>
           </div>
@@ -112,9 +121,9 @@ export default function Home() {
              
              <div className="grid md:grid-cols-3 gap-8">
                {[
-                 { title: "Professional Templates", desc: "Choose from a variety of recruiter-approved templates designed for every industry.", icon: FileText },
+                 { title: "Professional Templates", desc: "Choose from 100+ recruiter-approved templates designed for every industry.", icon: FileText },
                  { title: "Real-time Preview", desc: "See your changes instantly as you type. No more guessing how your resume will look.", icon: Sparkles },
-                 { title: "Easy PDF Export", desc: "Download your resume in high-quality PDF format ready for job applications.", icon: Download }
+                 { title: "Easy PDF & Word Export", desc: "Download your resume in high-quality PDF or editable Word format.", icon: Download }
                ].map((feature, i) => (
                  <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary mb-6">
@@ -127,6 +136,21 @@ export default function Home() {
                  </div>
                ))}
              </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-20 bg-primary">
+          <div className="container mx-auto px-6 text-center">
+            <h2 className="text-3xl font-bold text-white mb-4">Ready to build your resume?</h2>
+            <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto">
+              Join thousands of job seekers who have landed their dream jobs with our resume builder.
+            </p>
+            <Link href="/login">
+              <Button size="lg" variant="secondary" className="h-14 px-10 text-lg rounded-full shadow-xl">
+                Get Started Free <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
           </div>
         </section>
       </main>

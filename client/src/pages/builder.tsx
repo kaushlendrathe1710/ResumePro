@@ -4,19 +4,43 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { resumeSchema, defaultResumeData, ResumeData } from "@/lib/schema";
 import { ResumeForm } from "@/components/resume-form";
 import { ResumePreview } from "@/components/resume-preview";
-import { Link, useSearch } from "wouter";
-import { ArrowLeft, LayoutTemplate } from "lucide-react";
+import { Link, useSearch, useLocation } from "wouter";
+import { ArrowLeft, LayoutTemplate, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { templates } from "@/lib/templates";
 
 export default function Builder() {
+  const [_, setLocation] = useLocation();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const initialTemplateId = searchParams.get("template") || "modern-blue";
   
   const [templateId, setTemplateId] = useState(initialTemplateId);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
-  // Update local state if URL param changes (though usually we want to control it here)
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch("/api/auth/me");
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setLocation("/login");
+      }
+    } catch (error) {
+      setLocation("/login");
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setLocation("/");
+  };
+  
+  // Update local state if URL param changes
   useEffect(() => {
     const paramTemplate = searchParams.get("template");
     if (paramTemplate && templates.some(t => t.id === paramTemplate)) {
@@ -32,6 +56,14 @@ export default function Builder() {
 
   const formData = form.watch();
 
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       <header className="h-14 border-b px-6 flex items-center justify-between bg-white z-10 shrink-0">
@@ -42,11 +74,14 @@ export default function Builder() {
              </Button>
            </Link>
            <div className="h-6 w-px bg-slate-200"></div>
-           <h1 className="font-semibold text-slate-900 hidden sm:block">Untitled Resume</h1>
+           <h1 className="font-semibold text-slate-900 hidden sm:block">Resume Builder</h1>
          </div>
          
-         <div className="flex items-center gap-2 text-sm text-slate-500">
-           <span className="hidden md:inline">Changes saved automatically</span>
+         <div className="flex items-center gap-4">
+           <span className="hidden md:inline text-sm text-slate-500">Changes saved automatically</span>
+           <Button variant="ghost" size="sm" onClick={handleLogout}>
+             <LogOut className="w-4 h-4 mr-2" /> Logout
+           </Button>
          </div>
       </header>
 

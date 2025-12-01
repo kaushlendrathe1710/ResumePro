@@ -1,14 +1,29 @@
 import React, { useRef } from "react";
 import { ResumeData } from "@/lib/schema";
-import { templates } from "@/lib/templates";
+import { templates, LayoutType } from "@/lib/templates";
 import { ModernTemplate } from "./templates/modern";
 import { ClassicTemplate } from "./templates/classic";
 import { MinimalTemplate } from "./templates/minimal";
 import { ExecutiveTemplate } from "./templates/executive";
 import { CreativeTemplate } from "./templates/creative";
+import { ProfessionalTemplate } from "./templates/professional";
+import { ElegantTemplate } from "./templates/elegant";
+import { TechTemplate } from "./templates/tech";
+import { CorporateTemplate } from "./templates/corporate";
+import { AcademicTemplate } from "./templates/academic";
+import { SimpleTemplate } from "./templates/simple";
+import { BoldTemplate } from "./templates/bold";
+import { StylishTemplate } from "./templates/stylish";
+import { CompactTemplate } from "./templates/compact";
+import { SidebarTemplate } from "./templates/sidebar";
+import { TimelineTemplate } from "./templates/timeline";
+import { InfographicTemplate } from "./templates/infographic";
+import { CleanTemplate } from "./templates/clean";
+import { GradientTemplate } from "./templates/gradient";
+import { SharpTemplate } from "./templates/sharp";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, Palette, FileDown } from "lucide-react";
+import { Download, Palette, FileDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportToWord } from "@/lib/docx-export";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -40,7 +55,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
       font: selectedTemplate.font
     };
 
-    switch (selectedTemplate.layout) {
+    switch (selectedTemplate.layout as LayoutType) {
       case "modern":
         return <ModernTemplate {...props} />;
       case "classic":
@@ -51,6 +66,36 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
         return <ExecutiveTemplate {...props} />;
       case "creative":
         return <CreativeTemplate {...props} />;
+      case "professional":
+        return <ProfessionalTemplate {...props} />;
+      case "elegant":
+        return <ElegantTemplate {...props} />;
+      case "tech":
+        return <TechTemplate {...props} />;
+      case "corporate":
+        return <CorporateTemplate {...props} />;
+      case "academic":
+        return <AcademicTemplate {...props} />;
+      case "simple":
+        return <SimpleTemplate {...props} />;
+      case "bold":
+        return <BoldTemplate {...props} />;
+      case "stylish":
+        return <StylishTemplate {...props} />;
+      case "compact":
+        return <CompactTemplate {...props} />;
+      case "sidebar":
+        return <SidebarTemplate {...props} />;
+      case "timeline":
+        return <TimelineTemplate {...props} />;
+      case "infographic":
+        return <InfographicTemplate {...props} />;
+      case "clean":
+        return <CleanTemplate {...props} />;
+      case "gradient":
+        return <GradientTemplate {...props} />;
+      case "sharp":
+        return <SharpTemplate {...props} />;
       default:
         return <ModernTemplate {...props} />;
     }

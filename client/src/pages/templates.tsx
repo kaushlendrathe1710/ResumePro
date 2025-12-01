@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Search, LogOut } from "lucide-react";
-import { templates, TemplateConfig } from "@/lib/templates";
+import { templates, TemplateConfig, allLayouts, LayoutType } from "@/lib/templates";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo, useEffect } from "react";
@@ -11,8 +11,23 @@ import { ClassicTemplate } from "@/components/templates/classic";
 import { MinimalTemplate } from "@/components/templates/minimal";
 import { ExecutiveTemplate } from "@/components/templates/executive";
 import { CreativeTemplate } from "@/components/templates/creative";
+import { ProfessionalTemplate } from "@/components/templates/professional";
+import { ElegantTemplate } from "@/components/templates/elegant";
+import { TechTemplate } from "@/components/templates/tech";
+import { CorporateTemplate } from "@/components/templates/corporate";
+import { AcademicTemplate } from "@/components/templates/academic";
+import { SimpleTemplate } from "@/components/templates/simple";
+import { BoldTemplate } from "@/components/templates/bold";
+import { StylishTemplate } from "@/components/templates/stylish";
+import { CompactTemplate } from "@/components/templates/compact";
+import { SidebarTemplate } from "@/components/templates/sidebar";
+import { TimelineTemplate } from "@/components/templates/timeline";
+import { InfographicTemplate } from "@/components/templates/infographic";
+import { CleanTemplate } from "@/components/templates/clean";
+import { GradientTemplate } from "@/components/templates/gradient";
+import { SharpTemplate } from "@/components/templates/sharp";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-// Simplified data for previews to avoid clutter
 const previewData: ResumeData = {
   personal: {
     fullName: "Alex Morgan",
@@ -63,12 +78,27 @@ const MiniPreview = ({ template }: { template: TemplateConfig }) => {
   };
 
   const renderTemplate = () => {
-    switch (template.layout) {
+    switch (template.layout as LayoutType) {
       case "modern": return <ModernTemplate {...props} />;
       case "classic": return <ClassicTemplate {...props} />;
       case "minimal": return <MinimalTemplate {...props} />;
       case "executive": return <ExecutiveTemplate {...props} />;
       case "creative": return <CreativeTemplate {...props} />;
+      case "professional": return <ProfessionalTemplate {...props} />;
+      case "elegant": return <ElegantTemplate {...props} />;
+      case "tech": return <TechTemplate {...props} />;
+      case "corporate": return <CorporateTemplate {...props} />;
+      case "academic": return <AcademicTemplate {...props} />;
+      case "simple": return <SimpleTemplate {...props} />;
+      case "bold": return <BoldTemplate {...props} />;
+      case "stylish": return <StylishTemplate {...props} />;
+      case "compact": return <CompactTemplate {...props} />;
+      case "sidebar": return <SidebarTemplate {...props} />;
+      case "timeline": return <TimelineTemplate {...props} />;
+      case "infographic": return <InfographicTemplate {...props} />;
+      case "clean": return <CleanTemplate {...props} />;
+      case "gradient": return <GradientTemplate {...props} />;
+      case "sharp": return <SharpTemplate {...props} />;
       default: return <ModernTemplate {...props} />;
     }
   };
@@ -121,7 +151,7 @@ export default function Templates() {
     });
   }, [search, category]);
 
-  const categories = ["all", "modern", "classic", "minimal", "executive", "creative"];
+  const categories = ["all", ...allLayouts];
 
   if (isAuthenticated === null) {
     return (
@@ -168,23 +198,28 @@ export default function Templates() {
           </h2>
           <p className="text-slate-600">
             Choose from our extensive collection of free, professional resume templates.
-            Available in PDF and Word formats.
+            20 unique layouts with 20 color variations each.
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12">
-          {categories.map(cat => (
-            <Button
-              key={cat}
-              variant={category === cat ? "default" : "outline"}
-              onClick={() => setCategory(cat)}
-              className="capitalize rounded-full"
-              size="sm"
-            >
-              {cat}
-            </Button>
-          ))}
+        {/* Category Filter with horizontal scroll */}
+        <div className="mb-12">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex justify-center gap-2 pb-4">
+              {categories.map(cat => (
+                <Button
+                  key={cat}
+                  variant={category === cat ? "default" : "outline"}
+                  onClick={() => setCategory(cat)}
+                  className="capitalize rounded-full shrink-0"
+                  size="sm"
+                >
+                  {cat}
+                </Button>
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -193,15 +228,13 @@ export default function Templates() {
               key={template.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(index * 0.05, 0.5) }}
+              transition={{ delay: Math.min(index * 0.03, 0.3) }}
               className="group relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:border-primary/50 transition-all duration-300 cursor-pointer"
               onClick={() => handleSelectTemplate(template.id)}
             >
-              {/* Preview Mockup Area */}
               <div className="aspect-[1/1.414] bg-slate-100 relative overflow-hidden group-hover:bg-slate-50 transition-colors">
                  <MiniPreview template={template} />
 
-                 {/* Overlay on Hover */}
                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center z-20">
                    <Button className="opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-xl">
                      Use Template
@@ -225,6 +258,15 @@ export default function Templates() {
             </motion.div>
           ))}
         </div>
+
+        {filteredTemplates.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-slate-500">No templates found matching your criteria.</p>
+            <Button variant="link" onClick={() => { setSearch(""); setCategory("all"); }}>
+              Clear filters
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   );

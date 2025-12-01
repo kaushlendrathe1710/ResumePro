@@ -61,7 +61,12 @@ export default function Login() {
           setStep("register");
         } else {
           toast.success("Login successful!");
-          setLocation("/dashboard");
+          // Redirect admins to admin dashboard
+          if (data.isAdmin) {
+            setLocation("/admin");
+          } else {
+            setLocation("/dashboard");
+          }
         }
       } else {
         toast.error(data.error || "Invalid code");
@@ -88,7 +93,18 @@ export default function Login() {
 
       if (response.ok) {
         toast.success("Registration complete! Welcome to ResuMake.");
-        setLocation("/dashboard");
+        // Check if user is admin and redirect accordingly
+        const meResponse = await fetch("/api/auth/me");
+        if (meResponse.ok) {
+          const meData = await meResponse.json();
+          if (meData.isAdmin) {
+            setLocation("/admin");
+          } else {
+            setLocation("/dashboard");
+          }
+        } else {
+          setLocation("/dashboard");
+        }
       } else {
         toast.error(data.error || "Failed to complete registration");
       }

@@ -8,8 +8,10 @@ import { ExecutiveTemplate } from "./templates/executive";
 import { CreativeTemplate } from "./templates/creative";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, Palette } from "lucide-react";
+import { Printer, Download, Palette, FileDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { exportToWord } from "@/lib/docx-export";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ResumePreviewProps {
   data: ResumeData;
@@ -26,6 +28,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
     contentRef: printRef,
     documentTitle: `${data.personal.fullName.replace(/\s+/g, '_')}_Resume`,
   });
+
+  const handleWordExport = async () => {
+    await exportToWord(data);
+  };
 
   const renderTemplate = () => {
     const props = {
@@ -52,22 +58,22 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
 
   return (
     <div className="h-full flex flex-col bg-slate-800 border-l border-slate-700">
-      <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 text-white">
+      <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 text-white flex-wrap gap-4">
         <div className="flex items-center gap-4">
-           <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
+           <div className="flex items-center gap-2 text-sm font-medium text-slate-400 hidden lg:flex">
              <Palette className="w-4 h-4" />
-             <span className="hidden xl:inline">Current Template:</span>
+             <span className="hidden xl:inline">Template:</span>
            </div>
            <Select value={templateId} onValueChange={onTemplateChange}>
-             <SelectTrigger className="w-[240px] bg-slate-800 border-slate-600 text-white">
+             <SelectTrigger className="w-[180px] md:w-[240px] bg-slate-800 border-slate-600 text-white">
                <SelectValue placeholder="Select Template" />
              </SelectTrigger>
              <SelectContent className="max-h-[400px]">
                {templates.map(t => (
                  <SelectItem key={t.id} value={t.id}>
                    <div className="flex items-center gap-2">
-                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }}></div>
-                     <span>{t.name}</span>
+                     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }}></div>
+                     <span className="truncate">{t.name}</span>
                    </div>
                  </SelectItem>
                ))}
@@ -75,16 +81,40 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
            </Select>
         </div>
 
-        <Button 
-          onClick={() => handlePrint()} 
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20"
-        >
-          <Download className="w-4 h-4 mr-2" /> Download PDF
-        </Button>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="secondary"
+                onClick={handleWordExport} 
+                className="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600"
+              >
+                <FileDown className="w-4 h-4 mr-2" /> Word
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Download editable Word document</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                onClick={() => handlePrint()} 
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20"
+              >
+                <Download className="w-4 h-4 mr-2" /> PDF
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Download print-ready PDF</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-slate-800">
-        <div className="relative shadow-2xl transform transition-transform origin-top scale-[0.85] md:scale-[0.6] lg:scale-[0.8] xl:scale-[0.9] 2xl:scale-100">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-800">
+        <div className="relative shadow-2xl transform transition-transform origin-top scale-[0.5] sm:scale-[0.6] md:scale-[0.7] lg:scale-[0.8] xl:scale-[0.9] 2xl:scale-100">
            {/* Print Wrapper */}
            <div ref={printRef} className="bg-white w-[210mm] min-h-[297mm] shadow-white/5">
              {renderTemplate()}

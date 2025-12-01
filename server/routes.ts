@@ -68,16 +68,23 @@ export async function registerRoutes(
 
       // Get or create user
       let user = await storage.getUserByEmail(email);
+      let isNewUser = false;
+      
       if (!user) {
         user = await storage.createUser({ email });
+        isNewUser = true;
       }
+
+      // Check if user needs to complete registration (no name or phone)
+      const needsRegistration = !user.name || !user.phone;
 
       // Set session
       req.session.userId = user.id;
 
       res.json({ 
         success: true, 
-        user: { id: user.id, email: user.email } 
+        user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
+        needsRegistration
       });
     } catch (error) {
       console.error("Error in verify-otp:", error);
@@ -85,6 +92,33 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid request data" });
       }
       res.status(500).json({ error: "Failed to verify OTP" });
+    }
+  });
+
+  // Complete registration (add name and phone)
+  app.post("/api/auth/complete-registration", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { name, phone } = z.object({
+        name: z.string().min(2, "Name must be at least 2 characters"),
+        phone: z.string().min(10, "Please enter a valid phone number with country code"),
+      }).parse(req.body);
+
+      const user = await storage.updateUser(req.session.userId, { name, phone });
+
+      res.json({ 
+        success: true, 
+        user: { id: user.id, email: user.email, name: user.name, phone: user.phone }
+      });
+    } catch (error) {
+      console.error("Error in complete-registration:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      res.status(500).json({ error: "Failed to complete registration" });
     }
   });
 
@@ -99,7 +133,12 @@ export async function registerRoutes(
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ user: { id: user.id, email: user.email } });
+    const needsRegistration = !user.name || !user.phone;
+
+    res.json({ 
+      user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
+      needsRegistration
+    });
   });
 
   // Logout

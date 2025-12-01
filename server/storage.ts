@@ -7,6 +7,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, data: { name?: string; phone?: string }): Promise<User>;
 
   // OTP methods
   createOtpCode(otpCode: InsertOtpCode): Promise<OtpCode>;
@@ -38,6 +39,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .insert(users)
       .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, data: { name?: string; phone?: string }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
       .returning();
     return user;
   }

@@ -776,7 +776,7 @@ export async function registerRoutes(
     }
   });
 
-  // Record a download
+  // Record a download (detailed)
   app.post("/api/subscription/record-download", async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -803,6 +803,87 @@ export async function registerRoutes(
       await storage.decrementDownloadsRemaining(subscriptionId);
 
       res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording download:", error);
+      res.status(500).json({ error: "Failed to record download" });
+    }
+  });
+
+  // Simple download tracking (auto-detects subscription)
+  app.post("/api/subscription/download", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { format } = z.object({
+        format: z.enum(["pdf", "docx"]),
+      }).parse(req.body);
+
+      const userId = req.session.userId;
+
+      // Check for active subscription
+      let subWithPlan = await storage.getUserActiveSubscription(userId);
+
+      // Auto-assign default plan if no subscription
+      if (!subWithPlan) {
+        const defaultPlan = await storage.getDefaultPlan();
+        if (!defaultPlan) {
+          return res.status(400).json({ error: "No default plan available" });
+        }
+
+        // Check again in case of concurrent requests (double-check locking)
+        subWithPlan = await storage.getUserActiveSubscription(userId);
+        if (!subWithPlan) {
+          // Create subscription with default plan
+          const newSub = await storage.createUserSubscription({
+            userId,
+            planId: defaultPlan.id,
+            startDate: new Date(),
+            endDate: null,
+            downloadsRemaining: defaultPlan.downloadLimit,
+            downloadsUsed: 0,
+            isActive: true,
+          });
+          subWithPlan = { subscription: newSub, plan: defaultPlan };
+        }
+      }
+
+      const { subscription, plan } = subWithPlan;
+
+      // Validate download permission
+      if (subscription.endDate && new Date(subscription.endDate) < new Date()) {
+        return res.status(403).json({ error: "Subscription expired" });
+      }
+
+      if (subscription.downloadsRemaining <= 0) {
+        return res.status(403).json({ error: "No downloads remaining" });
+      }
+
+      if (format === "docx" && !plan.allowWordExport) {
+        return res.status(403).json({ error: "Word export not available in your plan" });
+      }
+
+      // Record download and decrement
+      await storage.recordDownload({
+        userId,
+        resumeId: "direct-export",
+        subscriptionId: subscription.id,
+        format,
+        hadWatermark: plan.hasWatermark,
+      });
+
+      await storage.decrementDownloadsRemaining(subscription.id);
+
+      // Fetch updated subscription to return accurate remaining count
+      const updatedSub = await storage.getUserActiveSubscription(userId);
+      const newRemaining = updatedSub?.subscription.downloadsRemaining ?? 0;
+
+      res.json({ 
+        success: true, 
+        downloadsRemaining: newRemaining,
+        hasWatermark: plan.hasWatermark
+      });
     } catch (error) {
       console.error("Error recording download:", error);
       res.status(500).json({ error: "Failed to record download" });

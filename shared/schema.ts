@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -60,3 +60,68 @@ export const insertResumeSchema = createInsertSchema(resumes).omit({
 
 export type InsertResume = z.infer<typeof insertResumeSchema>;
 export type Resume = typeof resumes.$inferSelect;
+
+// Subscription Plans table - admin configurable plans
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Basic, Premium, etc.
+  price: integer("price").default(0).notNull(), // Price in AED (0 for free)
+  downloadLimit: integer("download_limit").default(1).notNull(), // Number of downloads allowed
+  validityDays: integer("validity_days").default(0).notNull(), // 0 = forever, else days
+  hasWatermark: boolean("has_watermark").default(true).notNull(), // Watermark on PDF
+  watermarkText: text("watermark_text").default("Mymegaminds"), // Watermark text
+  allowWordExport: boolean("allow_word_export").default(false).notNull(), // Word export allowed
+  isActive: boolean("is_active").default(true).notNull(), // Plan is available
+  isDefault: boolean("is_default").default(false).notNull(), // Default plan for new users
+  sortOrder: integer("sort_order").default(0).notNull(), // Display order
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+// User Subscriptions table - tracks user's active subscription
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  planId: varchar("plan_id").references(() => subscriptionPlans.id).notNull(),
+  downloadsUsed: integer("downloads_used").default(0).notNull(), // Downloads used in current period
+  downloadsRemaining: integer("downloads_remaining").notNull(), // Downloads remaining
+  startDate: timestamp("start_date").defaultNow().notNull(),
+  endDate: timestamp("end_date"), // null for forever plans
+  isActive: boolean("is_active").default(true).notNull(),
+  paymentReference: text("payment_reference"), // For manual payment tracking
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+
+// Download History table - tracks all downloads
+export const downloadHistory = pgTable("download_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  resumeId: varchar("resume_id").references(() => resumes.id).notNull(),
+  subscriptionId: varchar("subscription_id").references(() => userSubscriptions.id),
+  format: text("format").notNull(), // pdf, docx
+  hadWatermark: boolean("had_watermark").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDownloadHistorySchema = createInsertSchema(downloadHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDownloadHistory = z.infer<typeof insertDownloadHistorySchema>;
+export type DownloadHistory = typeof downloadHistory.$inferSelect;

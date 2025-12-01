@@ -8,6 +8,7 @@ export function initializeEmailTransporter() {
   const port = process.env.EMAIL_PORT;
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_PASS;
+  const secure = process.env.SMTP_SECURE === "true";
 
   if (!host || !port || !user || !pass) {
     console.warn("Email configuration missing. Login will not work until credentials are provided.");
@@ -17,14 +18,14 @@ export function initializeEmailTransporter() {
   transporter = nodemailer.createTransport({
     host,
     port: parseInt(port),
-    secure: parseInt(port) === 465, // true for 465, false for other ports
+    secure,
     auth: {
       user,
       pass,
     },
   });
 
-  console.log("Email transporter initialized successfully");
+  console.log(`Email transporter initialized successfully (secure: ${secure})`);
 }
 
 export async function sendOtpEmail(email: string, otp: string): Promise<boolean> {

@@ -1,10 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { Pool } from "@neondatabase/serverless";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,28 +31,96 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Create PostgreSQL pool for session store
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// Custom PostgreSQL session store using Drizzle
+class DrizzleSessionStore extends session.Store {
+  async get(sid: string, callback: (err: any, session?: session.SessionData | null) => void) {
+    try {
+      const result = await db.execute(sql`
+        SELECT sess FROM user_sessions WHERE sid = ${sid} AND expire > NOW()
+      `);
+      if (result.rows.length > 0) {
+        callback(null, result.rows[0].sess as session.SessionData);
+      } else {
+        callback(null, null);
+      }
+    } catch (err) {
+      callback(err);
+    }
+  }
 
-// Create PostgreSQL session store
-const PgSession = connectPgSimple(session);
+  async set(sid: string, sessionData: session.SessionData, callback?: (err?: any) => void) {
+    try {
+      const maxAge = (sessionData.cookie?.maxAge || 30 * 24 * 60 * 60 * 1000);
+      const expire = new Date(Date.now() + maxAge);
+      
+      await db.execute(sql`
+        INSERT INTO user_sessions (sid, sess, expire)
+        VALUES (${sid}, ${JSON.stringify(sessionData)}::jsonb, ${expire})
+        ON CONFLICT (sid) DO UPDATE SET sess = ${JSON.stringify(sessionData)}::jsonb, expire = ${expire}
+      `);
+      callback?.();
+    } catch (err) {
+      callback?.(err);
+    }
+  }
 
-// Session middleware with PostgreSQL store for persistence
+  async destroy(sid: string, callback?: (err?: any) => void) {
+    try {
+      await db.execute(sql`DELETE FROM user_sessions WHERE sid = ${sid}`);
+      callback?.();
+    } catch (err) {
+      callback?.(err);
+    }
+  }
+
+  async touch(sid: string, sessionData: session.SessionData, callback?: (err?: any) => void) {
+    try {
+      const maxAge = (sessionData.cookie?.maxAge || 30 * 24 * 60 * 60 * 1000);
+      const expire = new Date(Date.now() + maxAge);
+      
+      await db.execute(sql`
+        UPDATE user_sessions SET expire = ${expire} WHERE sid = ${sid}
+      `);
+      callback?.();
+    } catch (err) {
+      callback?.(err);
+    }
+  }
+}
+
+// Ensure session table exists
+async function initSessionTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        sid VARCHAR PRIMARY KEY,
+        sess JSONB NOT NULL,
+        expire TIMESTAMP NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_user_sessions_expire ON user_sessions (expire)
+    `);
+    console.log("Session table ready");
+  } catch (err) {
+    console.error("Failed to create session table:", err);
+  }
+}
+
+// Initialize session table
+initSessionTable();
+
+// Session middleware with custom Drizzle store
 app.use(
   session({
-    store: new PgSession({
-      pool: pool as any,
-      tableName: "user_sessions",
-      createTableIfMissing: true,
-    }),
-    secret: process.env.SESSION_SECRET || "resumake-secret-key-change-in-production",
+    store: new DrizzleSessionStore(),
+    secret: process.env.SESSION_SECRET || "resumake-secret-key-2024",
     resave: false,
     saveUninitialized: false,
+    name: "resumake.sid",
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: false,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       sameSite: "lax",
     },
@@ -107,9 +175,6 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -117,10 +182,6 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {

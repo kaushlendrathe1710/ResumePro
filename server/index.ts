@@ -1,8 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { Pool } from "@neondatabase/serverless";
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,16 +31,30 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Session middleware
+// Create PostgreSQL pool for session store
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Create PostgreSQL session store
+const PgSession = connectPgSimple(session);
+
+// Session middleware with PostgreSQL store for persistence
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "dev-secret-change-in-production",
+    store: new PgSession({
+      pool: pool as any,
+      tableName: "user_sessions",
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || "resumake-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Set to true in production with HTTPS
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: "lax",
     },
   })
 );

@@ -1,21 +1,26 @@
 import React, { useRef } from "react";
 import { ResumeData } from "@/lib/schema";
+import { templates } from "@/lib/templates";
 import { ModernTemplate } from "./templates/modern";
 import { ClassicTemplate } from "./templates/classic";
 import { MinimalTemplate } from "./templates/minimal";
+import { ExecutiveTemplate } from "./templates/executive";
+import { CreativeTemplate } from "./templates/creative";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
-import { Printer, Download } from "lucide-react";
+import { Printer, Download, Palette } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ResumePreviewProps {
   data: ResumeData;
-  template: string;
+  templateId: string;
   onTemplateChange: (value: string) => void;
 }
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, template, onTemplateChange }) => {
+export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, onTemplateChange }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  
+  const selectedTemplate = templates.find(t => t.id === templateId) || templates[0];
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -23,15 +28,25 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, template, on
   });
 
   const renderTemplate = () => {
-    switch (template) {
+    const props = {
+      data,
+      color: selectedTemplate.color,
+      font: selectedTemplate.font
+    };
+
+    switch (selectedTemplate.layout) {
       case "modern":
-        return <ModernTemplate data={data} />;
+        return <ModernTemplate {...props} />;
       case "classic":
-        return <ClassicTemplate data={data} />;
+        return <ClassicTemplate {...props} />;
       case "minimal":
-        return <MinimalTemplate data={data} />;
+        return <MinimalTemplate {...props} />;
+      case "executive":
+        return <ExecutiveTemplate {...props} />;
+      case "creative":
+        return <CreativeTemplate {...props} />;
       default:
-        return <ModernTemplate data={data} />;
+        return <ModernTemplate {...props} />;
     }
   };
 
@@ -39,15 +54,23 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, template, on
     <div className="h-full flex flex-col bg-slate-800 border-l border-slate-700">
       <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 text-white">
         <div className="flex items-center gap-4">
-           <span className="text-sm font-medium text-slate-400">Template:</span>
-           <Select value={template} onValueChange={onTemplateChange}>
-             <SelectTrigger className="w-[180px] bg-slate-800 border-slate-600 text-white">
+           <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
+             <Palette className="w-4 h-4" />
+             <span className="hidden xl:inline">Current Template:</span>
+           </div>
+           <Select value={templateId} onValueChange={onTemplateChange}>
+             <SelectTrigger className="w-[240px] bg-slate-800 border-slate-600 text-white">
                <SelectValue placeholder="Select Template" />
              </SelectTrigger>
-             <SelectContent>
-               <SelectItem value="modern">Modern Professional</SelectItem>
-               <SelectItem value="classic">Classic Serif</SelectItem>
-               <SelectItem value="minimal">Clean Minimalist</SelectItem>
+             <SelectContent className="max-h-[400px]">
+               {templates.map(t => (
+                 <SelectItem key={t.id} value={t.id}>
+                   <div className="flex items-center gap-2">
+                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }}></div>
+                     <span>{t.name}</span>
+                   </div>
+                 </SelectItem>
+               ))}
              </SelectContent>
            </Select>
         </div>

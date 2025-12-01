@@ -16,7 +16,7 @@ export default function Home() {
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
           <a href="#features" className="hover:text-primary transition-colors">Features</a>
-          <a href="#templates" className="hover:text-primary transition-colors">Templates</a>
+          <Link href="/templates" className="hover:text-primary transition-colors">Templates</Link>
           <a href="#" className="hover:text-primary transition-colors">About</a>
         </div>
         <Link href="/build">
@@ -46,9 +46,11 @@ export default function Home() {
                   Build My Resume <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2">
-                View Templates
-              </Button>
+              <Link href="/templates">
+                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2">
+                  View Templates
+                </Button>
+              </Link>
             </div>
             
             <div className="pt-8 flex items-center gap-8 text-slate-500 text-sm font-medium">

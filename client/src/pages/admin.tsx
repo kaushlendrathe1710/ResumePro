@@ -261,16 +261,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (user) {
+      fetchPlans();
+      fetchUsers();
       if (activeTab === "overview") {
         fetchStats();
-      } else if (activeTab === "users" || activeTab === "admins") {
-        fetchUsers();
-      } else if (activeTab === "plans") {
-        fetchPlans();
       } else if (activeTab === "subscriptions") {
         fetchSubscriptions();
-        fetchPlans();
-        fetchUsers();
       }
     }
   }, [activeTab, user]);

@@ -43,7 +43,7 @@ export async function sendOtpEmail(
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.SMTP_USER,
       to: email,
       subject: "Your ResuMake Login Code",
       html: `

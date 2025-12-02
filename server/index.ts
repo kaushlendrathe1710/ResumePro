@@ -123,18 +123,24 @@ async function initSessionTable() {
 initSessionTable();
 
 // Session middleware with custom Drizzle store
+const isProduction = process.env.NODE_ENV === "production";
+
+app.set("trust proxy", 1);
+
 app.use(
   session({
     store: new DrizzleSessionStore(),
     secret: process.env.SESSION_SECRET || "resumake-secret-key-2024",
-    resave: false,
+    resave: true,
     saveUninitialized: false,
+    rolling: true,
     name: "resumake.sid",
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: isProduction,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
+      path: "/",
     },
   }),
 );

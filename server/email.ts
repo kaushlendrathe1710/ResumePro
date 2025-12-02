@@ -4,14 +4,16 @@ import nodemailer from "nodemailer";
 let transporter: nodemailer.Transporter | null = null;
 
 export function initializeEmailTransporter() {
-  const host = process.env.EMAIL_HOST;
-  const port = process.env.EMAIL_PORT;
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
   const secure = process.env.SMTP_SECURE === "true";
 
   if (!host || !port || !user || !pass) {
-    console.warn("Email configuration missing. Login will not work until credentials are provided.");
+    console.warn(
+      "Email configuration missing. Login will not work until credentials are provided.",
+    );
     return;
   }
 
@@ -28,9 +30,14 @@ export function initializeEmailTransporter() {
   console.log(`Email transporter initialized successfully (secure: ${secure})`);
 }
 
-export async function sendOtpEmail(email: string, otp: string): Promise<boolean> {
+export async function sendOtpEmail(
+  email: string,
+  otp: string,
+): Promise<boolean> {
   if (!transporter) {
-    throw new Error("Email transporter not initialized. Please configure email credentials.");
+    throw new Error(
+      "Email transporter not initialized. Please configure email credentials.",
+    );
   }
 
   try {

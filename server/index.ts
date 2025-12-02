@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import "dotenv/config";
 import session from "express-session";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -33,7 +34,10 @@ app.use(express.urlencoded({ extended: false }));
 
 // Custom PostgreSQL session store using Drizzle
 class DrizzleSessionStore extends session.Store {
-  async get(sid: string, callback: (err: any, session?: session.SessionData | null) => void) {
+  async get(
+    sid: string,
+    callback: (err: any, session?: session.SessionData | null) => void,
+  ) {
     try {
       const result = await db.execute(sql`
         SELECT sess FROM user_sessions WHERE sid = ${sid} AND expire > NOW()
@@ -48,11 +52,15 @@ class DrizzleSessionStore extends session.Store {
     }
   }
 
-  async set(sid: string, sessionData: session.SessionData, callback?: (err?: any) => void) {
+  async set(
+    sid: string,
+    sessionData: session.SessionData,
+    callback?: (err?: any) => void,
+  ) {
     try {
-      const maxAge = (sessionData.cookie?.maxAge || 30 * 24 * 60 * 60 * 1000);
+      const maxAge = sessionData.cookie?.maxAge || 30 * 24 * 60 * 60 * 1000;
       const expire = new Date(Date.now() + maxAge);
-      
+
       await db.execute(sql`
         INSERT INTO user_sessions (sid, sess, expire)
         VALUES (${sid}, ${JSON.stringify(sessionData)}::jsonb, ${expire})
@@ -73,11 +81,15 @@ class DrizzleSessionStore extends session.Store {
     }
   }
 
-  async touch(sid: string, sessionData: session.SessionData, callback?: (err?: any) => void) {
+  async touch(
+    sid: string,
+    sessionData: session.SessionData,
+    callback?: (err?: any) => void,
+  ) {
     try {
-      const maxAge = (sessionData.cookie?.maxAge || 30 * 24 * 60 * 60 * 1000);
+      const maxAge = sessionData.cookie?.maxAge || 30 * 24 * 60 * 60 * 1000;
       const expire = new Date(Date.now() + maxAge);
-      
+
       await db.execute(sql`
         UPDATE user_sessions SET expire = ${expire} WHERE sid = ${sid}
       `);
@@ -124,7 +136,7 @@ app.use(
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       sameSite: "lax",
     },
-  })
+  }),
 );
 
 export function log(message: string, source = "express") {

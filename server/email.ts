@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import "dotenv/config";
 
 // Create transporter - will be configured with user's credentials via env vars
 let transporter: nodemailer.Transporter | null = null;

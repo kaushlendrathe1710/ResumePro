@@ -1,15 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { 
   Plus, FileText, LogOut, Loader2, 
   FolderOpen, Download, FileDown, Edit, Trash2,
-  LayoutTemplate, User, Clock, Sparkles, CreditCard, Crown
+  LayoutTemplate, User, Clock, Sparkles, CreditCard, Crown, Search
 } from "lucide-react";
 import { toast } from "sonner";
+import { templates, TemplateConfig, allLayouts, LayoutType } from "@/lib/templates";
+import { ResumeData } from "@/lib/schema";
+import { ModernTemplate } from "@/components/templates/modern";
+import { ClassicTemplate } from "@/components/templates/classic";
+import { MinimalTemplate } from "@/components/templates/minimal";
+import { ExecutiveTemplate } from "@/components/templates/executive";
+import { CreativeTemplate } from "@/components/templates/creative";
+import { ProfessionalTemplate } from "@/components/templates/professional";
+import { ElegantTemplate } from "@/components/templates/elegant";
+import { TechTemplate } from "@/components/templates/tech";
+import { CorporateTemplate } from "@/components/templates/corporate";
+import { AcademicTemplate } from "@/components/templates/academic";
+import { SimpleTemplate } from "@/components/templates/simple";
+import { BoldTemplate } from "@/components/templates/bold";
+import { StylishTemplate } from "@/components/templates/stylish";
+import { CompactTemplate } from "@/components/templates/compact";
+import { SidebarTemplate } from "@/components/templates/sidebar";
+import { TimelineTemplate } from "@/components/templates/timeline";
+import { InfographicTemplate } from "@/components/templates/infographic";
+import { CleanTemplate } from "@/components/templates/clean";
+import { GradientTemplate } from "@/components/templates/gradient";
+import { SharpTemplate } from "@/components/templates/sharp";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -28,6 +52,81 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const previewData: ResumeData = {
+  personal: {
+    fullName: "Alex Morgan",
+    title: "Product Designer",
+    email: "alex@example.com",
+    phone: "+1 555 0123",
+    location: "San Francisco",
+    summary: "Creative designer with 6+ years of experience building digital products.",
+    website: "alex.design",
+  },
+  experience: [
+    {
+      id: "1",
+      company: "TechFlow",
+      role: "Senior Designer",
+      date: "2021-Pres",
+      description: "Leading design system initiative and overseeing UX.",
+    },
+  ],
+  education: [
+    {
+      id: "1",
+      school: "Design Institute",
+      degree: "BFA Design",
+      date: "2018",
+      description: "",
+    },
+  ],
+  skills: [
+    { id: "1", name: "UI/UX" },
+    { id: "2", name: "Figma" },
+    { id: "3", name: "React" },
+  ],
+};
+
+const MiniPreview = ({ template }: { template: TemplateConfig }) => {
+  const props = {
+    data: previewData,
+    color: template.color,
+    font: template.font,
+  };
+
+  const renderTemplate = () => {
+    switch (template.layout as LayoutType) {
+      case "modern": return <ModernTemplate {...props} />;
+      case "classic": return <ClassicTemplate {...props} />;
+      case "minimal": return <MinimalTemplate {...props} />;
+      case "executive": return <ExecutiveTemplate {...props} />;
+      case "creative": return <CreativeTemplate {...props} />;
+      case "professional": return <ProfessionalTemplate {...props} />;
+      case "elegant": return <ElegantTemplate {...props} />;
+      case "tech": return <TechTemplate {...props} />;
+      case "corporate": return <CorporateTemplate {...props} />;
+      case "academic": return <AcademicTemplate {...props} />;
+      case "simple": return <SimpleTemplate {...props} />;
+      case "bold": return <BoldTemplate {...props} />;
+      case "stylish": return <StylishTemplate {...props} />;
+      case "compact": return <CompactTemplate {...props} />;
+      case "sidebar": return <SidebarTemplate {...props} />;
+      case "timeline": return <TimelineTemplate {...props} />;
+      case "infographic": return <InfographicTemplate {...props} />;
+      case "clean": return <CleanTemplate {...props} />;
+      case "gradient": return <GradientTemplate {...props} />;
+      case "sharp": return <SharpTemplate {...props} />;
+      default: return <ModernTemplate {...props} />;
+    }
+  };
+
+  return (
+    <div className="w-[200%] h-[200%] origin-top-left scale-[0.5] pointer-events-none select-none bg-white overflow-hidden">
+      {renderTemplate()}
+    </div>
+  );
+};
 
 interface UserData {
   id: string;
@@ -88,6 +187,17 @@ export default function Dashboard() {
   const [deleteResumeId, setDeleteResumeId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateCategory, setTemplateCategory] = useState<string>("all");
+
+  const filteredTemplates = useMemo(() => {
+    return templates.filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+        t.layout.toLowerCase().includes(templateSearch.toLowerCase());
+      const matchesCategory = templateCategory === "all" || t.layout === templateCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [templateSearch, templateCategory]);
 
   useEffect(() => {
     checkAuth();
@@ -211,7 +321,7 @@ export default function Dashboard() {
     { id: "resumes", icon: FolderOpen, label: "My Resumes" },
     { id: "downloads", icon: Download, label: "Downloads" },
     { id: "subscription", icon: CreditCard, label: "Subscription" },
-    { id: "templates", icon: LayoutTemplate, label: "Templates", href: "/templates" },
+    { id: "templates", icon: LayoutTemplate, label: "Templates" },
     { id: "profile", icon: User, label: "Profile" },
   ];
 
@@ -230,29 +340,19 @@ export default function Dashboard() {
         
         <nav className="flex-1 p-4 space-y-1">
           {sidebarItems.map((item) => (
-            item.href ? (
-              <Link key={item.id} href={item.href}>
-                <button
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              </Link>
-            ) : (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
-                  activeTab === item.id 
-                    ? "bg-primary/10 text-primary font-semibold" 
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-              </button>
-            )
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
+                activeTab === item.id 
+                  ? "bg-primary/10 text-primary font-semibold" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+              data-testid={`nav-${item.id}`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium">{item.label}</span>
+            </button>
           ))}
         </nav>
 
@@ -275,12 +375,14 @@ export default function Dashboard() {
                 {activeTab === "resumes" && "My Resumes"}
                 {activeTab === "downloads" && "Download Resumes"}
                 {activeTab === "subscription" && "My Subscription"}
+                {activeTab === "templates" && "Choose a Template"}
                 {activeTab === "profile" && "Profile Settings"}
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {activeTab === "resumes" && `${resumes.length} resume${resumes.length !== 1 ? 's' : ''} created`}
                 {activeTab === "downloads" && "Download your resumes as PDF or Word"}
                 {activeTab === "subscription" && "Manage your subscription plan"}
+                {activeTab === "templates" && "400+ professional templates to choose from"}
                 {activeTab === "profile" && "Manage your account settings"}
               </p>
             </div>
@@ -655,6 +757,84 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {activeTab === "templates" && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Search templates..."
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-template-search"
+                  />
+                </div>
+              </div>
+
+              <ScrollArea className="w-full whitespace-nowrap pb-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant={templateCategory === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTemplateCategory("all")}
+                    className="rounded-full"
+                    data-testid="filter-all"
+                  >
+                    All Templates
+                  </Button>
+                  {allLayouts.map((layout) => (
+                    <Button
+                      key={layout}
+                      variant={templateCategory === layout ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTemplateCategory(layout)}
+                      className="rounded-full capitalize"
+                      data-testid={`filter-${layout}`}
+                    >
+                      {layout}
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {filteredTemplates.map((template) => (
+                  <Card
+                    key={template.id}
+                    className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group border-2 hover:border-primary"
+                    onClick={() => setLocation(`/build?template=${template.id}`)}
+                    data-testid={`template-card-${template.id}`}
+                  >
+                    <div className="aspect-[3/4] relative overflow-hidden bg-slate-100">
+                      <MiniPreview template={template} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
+                        <Button size="sm" className="shadow-lg">
+                          Use Template
+                        </Button>
+                      </div>
+                    </div>
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm text-slate-800 truncate">{template.name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{template.layout}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {filteredTemplates.length === 0 && (
+                <div className="text-center py-12 text-slate-500">
+                  No templates match your search criteria
+                </div>
+              )}
+
+              <div className="text-center text-sm text-slate-500 pt-4">
+                Showing {filteredTemplates.length} of {templates.length} templates
+              </div>
             </div>
           )}
 

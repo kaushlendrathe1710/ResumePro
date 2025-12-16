@@ -254,6 +254,9 @@ export default function AdminDashboard() {
   const [activatePlanId, setActivatePlanId] = useState<string>("");
   const [paymentRef, setPaymentRef] = useState("");
   const [subSearchQuery, setSubSearchQuery] = useState("");
+  const [editingSubscription, setEditingSubscription] = useState<UserSubscription | null>(null);
+  const [editSubPlanId, setEditSubPlanId] = useState<string>("");
+  const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -495,6 +498,75 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       toast.error("Failed to deactivate subscription");
+    }
+  };
+
+  const handleEditSubscription = (sub: UserSubscription) => {
+    setEditingSubscription(sub);
+    setEditSubPlanId(sub.planId);
+  };
+
+  const handleUpdateSubscription = async () => {
+    if (!editingSubscription || !editSubPlanId) return;
+    
+    try {
+      const response = await fetch(`/api/admin/subscriptions/${editingSubscription.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: editSubPlanId }),
+      });
+      
+      if (response.ok) {
+        toast.success("Subscription updated");
+        fetchSubscriptions();
+        setEditingSubscription(null);
+        setEditSubPlanId("");
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to update subscription");
+      }
+    } catch (error) {
+      toast.error("Failed to update subscription");
+    }
+  };
+
+  const handleDeleteSubscription = async (subId: string) => {
+    try {
+      const response = await fetch(`/api/admin/subscriptions/${subId}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        toast.success("Subscription deleted");
+        fetchSubscriptions();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete subscription");
+      }
+    } catch (error) {
+      toast.error("Failed to delete subscription");
+    }
+    setDeleteSubId(null);
+  };
+
+  const handleCleanupDuplicates = async () => {
+    if (!confirm("This will delete all duplicate and inactive subscriptions, keeping only one active subscription per user. Continue?")) return;
+    
+    try {
+      const response = await fetch("/api/admin/subscriptions/cleanup", {
+        method: "POST",
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Cleaned up ${data.deletedCount} duplicate subscriptions`);
+        fetchSubscriptions();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to cleanup subscriptions");
+      }
+    } catch (error) {
+      toast.error("Failed to cleanup subscriptions");
     }
   };
 
@@ -1002,15 +1074,28 @@ export default function AdminDashboard() {
                       <CreditCard className="w-5 h-5 text-emerald-400" />
                       Active Subscriptions ({filteredSubscriptions.filter(s => s.isActive).length})
                     </CardTitle>
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-                      <Input
-                        placeholder="Search subscriptions..."
-                        value={subSearchQuery}
-                        onChange={(e) => setSubSearchQuery(e.target.value)}
-                        className="pl-9 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 w-64"
-                        data-testid="input-search-subscriptions"
-                      />
+                    <div className="flex items-center gap-3">
+                      {isSuperAdmin && (
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-500 text-amber-400"
+                          onClick={handleCleanupDuplicates}
+                          data-testid="button-cleanup-duplicates"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Cleanup Duplicates
+                        </Button>
+                      )}
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                        <Input
+                          placeholder="Search subscriptions..."
+                          value={subSearchQuery}
+                          onChange={(e) => setSubSearchQuery(e.target.value)}
+                          className="pl-9 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 w-64"
+                          data-testid="input-search-subscriptions"
+                        />
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -1057,17 +1142,35 @@ export default function AdminDashboard() {
                           {isSuperAdmin && (
                             <TableCell>
                               <div className="flex items-center justify-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-blue-500 text-blue-400"
+                                  onClick={() => handleEditSubscription(sub)}
+                                  data-testid={`button-edit-sub-${sub.id}`}
+                                >
+                                  <Edit className="w-3 h-3 mr-1" /> Edit
+                                </Button>
                                 {sub.isActive && (
                                   <Button 
                                     size="sm" 
                                     variant="outline"
-                                    className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
+                                    className="border-red-500 text-red-400"
                                     onClick={() => handleDeactivateSubscription(sub.id)}
                                     data-testid={`button-deactivate-${sub.id}`}
                                   >
                                     Deactivate
                                   </Button>
                                 )}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-700 text-red-500"
+                                  onClick={() => setDeleteSubId(sub.id)}
+                                  data-testid={`button-delete-sub-${sub.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
                               </div>
                             </TableCell>
                           )}
@@ -1241,6 +1344,68 @@ export default function AdminDashboard() {
               onClick={() => demoteUserId && handleDemoteUser(demoteUserId)}
             >
               Demote
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Subscription Dialog */}
+      <Dialog open={!!editingSubscription} onOpenChange={() => setEditingSubscription(null)}>
+        <DialogContent className="bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Subscription</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-slate-400 mb-1">User</p>
+              <p className="text-white font-medium">{editingSubscription?.userName || editingSubscription?.userEmail}</p>
+            </div>
+            <div>
+              <Label className="text-slate-300 mb-2 block">Change Plan</Label>
+              <Select 
+                value={editSubPlanId} 
+                onValueChange={(v) => setEditSubPlanId(v)}
+              >
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white" data-testid="select-edit-plan">
+                  <SelectValue placeholder="Select plan" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  {plans.filter(p => p.isActive).map((p) => (
+                    <SelectItem key={p.id} value={p.id} className="text-white">
+                      {p.name} ({p.price === 0 ? "Free" : `${p.price} AED`})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleUpdateSubscription} className="bg-emerald-600 hover:bg-emerald-700" data-testid="button-save-sub">
+                <Check className="w-4 h-4 mr-2" /> Save Changes
+              </Button>
+              <Button variant="outline" onClick={() => setEditingSubscription(null)} className="border-slate-600 text-slate-300">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Subscription Confirmation Dialog */}
+      <AlertDialog open={!!deleteSubId} onOpenChange={() => setDeleteSubId(null)}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Subscription?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will permanently delete this subscription record. The user will need a new subscription to be activated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => deleteSubId && handleDeleteSubscription(deleteSubId)}
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

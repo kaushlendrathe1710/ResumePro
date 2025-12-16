@@ -54,6 +54,8 @@ export interface IStorage {
   updateUserSubscription(id: string, data: Partial<InsertUserSubscription>): Promise<UserSubscription>;
   getAllUserSubscriptions(): Promise<UserSubscription[]>;
   deactivateUserSubscription(id: string): Promise<void>;
+  deleteUserSubscription(id: string): Promise<void>;
+  cleanupDuplicateSubscriptions(): Promise<number>;
 
   // Download tracking methods
   recordDownload(download: InsertDownloadHistory): Promise<DownloadHistory>;
@@ -311,6 +313,41 @@ export class DatabaseStorage implements IStorage {
 
   async deactivateUserSubscription(id: string): Promise<void> {
     await db.update(userSubscriptions).set({ isActive: false }).where(eq(userSubscriptions.id, id));
+  }
+
+  async deleteUserSubscription(id: string): Promise<void> {
+    await db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
+  }
+
+  async cleanupDuplicateSubscriptions(): Promise<number> {
+    const allSubs = await db.select().from(userSubscriptions).orderBy(desc(userSubscriptions.createdAt));
+    const userKeptSub = new Map<string, string>();
+    const toDelete: string[] = [];
+
+    for (const sub of allSubs) {
+      const key = sub.userId;
+      if (!userKeptSub.has(key)) {
+        if (sub.isActive) {
+          userKeptSub.set(key, sub.id);
+        }
+      } else {
+        if (sub.isActive) {
+          toDelete.push(sub.id);
+        }
+      }
+    }
+
+    for (const sub of allSubs) {
+      if (!userKeptSub.has(sub.userId)) {
+        userKeptSub.set(sub.userId, sub.id);
+      }
+    }
+
+    for (const id of toDelete) {
+      await db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
+    }
+
+    return toDelete.length;
   }
 
   // Download tracking methods

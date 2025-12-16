@@ -637,6 +637,75 @@ export async function registerRoutes(
     }
   });
 
+  // Update user subscription (change plan) - super admin
+  app.patch("/api/admin/subscriptions/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { planId, resetDownloads } = z.object({
+        planId: z.string(),
+        resetDownloads: z.boolean().optional(),
+      }).parse(req.body);
+
+      const plan = await storage.getPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      const allSubs = await storage.getAllUserSubscriptions();
+      const existingSub = allSubs.find(s => s.id === req.params.id);
+      if (!existingSub) {
+        return res.status(404).json({ error: "Subscription not found" });
+      }
+
+      const endDate = plan.validityDays > 0 
+        ? new Date(Date.now() + plan.validityDays * 24 * 60 * 60 * 1000)
+        : null;
+
+      const updateData: any = {
+        planId,
+        endDate,
+      };
+
+      if (resetDownloads) {
+        updateData.downloadsRemaining = plan.downloadLimit;
+        updateData.downloadsUsed = 0;
+      } else {
+        updateData.downloadsRemaining = Math.max(0, plan.downloadLimit - existingSub.downloadsUsed);
+      }
+
+      const updated = await storage.updateUserSubscription(req.params.id, updateData);
+
+      res.json({ subscription: updated });
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      res.status(500).json({ error: "Failed to update subscription" });
+    }
+  });
+
+  // Delete user subscription (super admin)
+  app.delete("/api/admin/subscriptions/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      await storage.deleteUserSubscription(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting subscription:", error);
+      res.status(500).json({ error: "Failed to delete subscription" });
+    }
+  });
+
+  // Cleanup duplicate subscriptions (super admin) - keeps only one active per user
+  app.post("/api/admin/subscriptions/cleanup", requireSuperAdmin, async (req, res) => {
+    try {
+      const deletedCount = await storage.cleanupDuplicateSubscriptions();
+      res.json({ success: true, deletedCount });
+    } catch (error) {
+      console.error("Error cleaning up subscriptions:", error);
+      res.status(500).json({ error: "Failed to cleanup subscriptions" });
+    }
+  });
+
   // ============= USER SUBSCRIPTION ROUTES =============
 
   // Get available plans (public for display)

@@ -543,6 +543,18 @@ export async function registerRoutes(
   // Delete subscription plan (super admin)
   app.delete("/api/admin/plans/:id", requireSuperAdmin, async (req, res) => {
     try {
+      const plan = await storage.getPlan(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      const linkedSubscriptions = await storage.getSubscriptionsByPlanId(req.params.id);
+      if (linkedSubscriptions.length > 0) {
+        return res.status(400).json({ 
+          error: `Cannot delete this plan. ${linkedSubscriptions.length} user subscription(s) are linked to it. Please reassign or deactivate those subscriptions first.` 
+        });
+      }
+
       await storage.deletePlan(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -823,7 +835,7 @@ export async function registerRoutes(
       const userId = req.session.userId;
 
       // Check for active subscription
-      let subWithPlan = await storage.getUserActiveSubscription(userId);
+      let subWithPlan = await storage.getUserSubscriptionWithPlan(userId);
 
       // Auto-assign default plan if no subscription
       if (!subWithPlan) {
@@ -833,7 +845,7 @@ export async function registerRoutes(
         }
 
         // Check again in case of concurrent requests (double-check locking)
-        subWithPlan = await storage.getUserActiveSubscription(userId);
+        subWithPlan = await storage.getUserSubscriptionWithPlan(userId);
         if (!subWithPlan) {
           // Create subscription with default plan
           const newSub = await storage.createUserSubscription({
@@ -876,7 +888,7 @@ export async function registerRoutes(
       await storage.decrementDownloadsRemaining(subscription.id);
 
       // Fetch updated subscription to return accurate remaining count
-      const updatedSub = await storage.getUserActiveSubscription(userId);
+      const updatedSub = await storage.getUserSubscriptionWithPlan(userId);
       const newRemaining = updatedSub?.subscription.downloadsRemaining ?? 0;
 
       res.json({ 

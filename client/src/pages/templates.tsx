@@ -4,7 +4,7 @@ import { ArrowLeft, Search, LogOut } from "lucide-react";
 import { templates, TemplateConfig, allLayouts, LayoutType } from "@/lib/templates";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ResumeData } from "@/lib/schema";
 import { ModernTemplate } from "@/components/templates/modern";
 import { ClassicTemplate } from "@/components/templates/classic";
@@ -70,7 +70,28 @@ const previewData: ResumeData = {
   ],
 };
 
-const MiniPreview = ({ template }: { template: TemplateConfig }) => {
+const LazyMiniPreview = ({ template }: { template: TemplateConfig }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px" }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   const props = {
     data: previewData,
     color: template.color,
@@ -104,8 +125,16 @@ const MiniPreview = ({ template }: { template: TemplateConfig }) => {
   };
 
   return (
-    <div className="w-[200%] h-[200%] origin-top-left scale-[0.5] pointer-events-none select-none bg-white overflow-hidden">
-      {renderTemplate()}
+    <div ref={ref} className="w-full h-full">
+      {isVisible ? (
+        <div className="w-[200%] h-[200%] origin-top-left scale-[0.5] pointer-events-none select-none bg-white overflow-hidden">
+          {renderTemplate()}
+        </div>
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-slate-100">
+          <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      )}
     </div>
   );
 };
@@ -233,7 +262,7 @@ export default function Templates() {
               onClick={() => handleSelectTemplate(template.id)}
             >
               <div className="aspect-[1/1.414] bg-slate-100 relative overflow-hidden group-hover:bg-slate-50 transition-colors">
-                 <MiniPreview template={template} />
+                 <LazyMiniPreview template={template} />
 
                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center z-20">
                    <Button className="opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-xl">

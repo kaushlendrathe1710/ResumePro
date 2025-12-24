@@ -21,7 +21,6 @@ import { InfographicTemplate } from "./templates/infographic";
 import { CleanTemplate } from "./templates/clean";
 import { GradientTemplate } from "./templates/gradient";
 import { SharpTemplate } from "./templates/sharp";
-import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { Download, Palette, FileDown, Crown, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +28,8 @@ import { exportToWord } from "@/lib/docx-export";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
 
 interface SubscriptionInfo {
   hasSubscription: boolean;
@@ -76,7 +77,6 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
   const printRef = useRef<HTMLDivElement>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [pendingDownloadFormat, setPendingDownloadFormat] = useState<"pdf" | "docx" | null>(null);
   
   const selectedTemplate = templates.find(t => t.id === templateId) || templates[0];
 
@@ -146,31 +146,52 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
     }
   };
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `${data.personal.fullName.replace(/\s+/g, '_')}_Resume`,
-    onAfterPrint: () => {
-      if (pendingDownloadFormat === "pdf") {
-        toast.success("PDF download completed!");
-        setPendingDownloadFormat(null);
-      }
-    },
-  });
-
   const handlePdfDownload = async () => {
     if (!canDownload()) {
       toast.error("No downloads remaining. Please upgrade your plan.");
       return;
     }
     
+    if (!printRef.current) {
+      toast.error("Unable to generate PDF. Please try again.");
+      return;
+    }
+    
     setIsDownloading(true);
-    setPendingDownloadFormat("pdf");
     try {
       await recordDownload("pdf");
-      handlePrint();
+      
+      const element = printRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 0;
+      
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      const fileName = `${data.personal.fullName.replace(/\s+/g, '_')}_Resume.pdf`;
+      pdf.save(fileName);
+      
+      toast.success("PDF downloaded!");
     } catch (error: any) {
       toast.error(error.message || "Download failed. Please try again.");
-      setPendingDownloadFormat(null);
     } finally {
       setIsDownloading(false);
     }

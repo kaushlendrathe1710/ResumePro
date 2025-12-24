@@ -948,7 +948,7 @@ export async function registerRoutes(
       // Record download and decrement
       await storage.recordDownload({
         userId,
-        resumeId: "direct-export",
+        resumeId: null,
         subscriptionId: subscription.id,
         format,
         hadWatermark: plan.hasWatermark,

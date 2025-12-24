@@ -111,7 +111,7 @@ export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export const downloadHistory = pgTable("download_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  resumeId: varchar("resume_id").references(() => resumes.id).notNull(),
+  resumeId: varchar("resume_id"), // nullable for direct exports
   subscriptionId: varchar("subscription_id").references(() => userSubscriptions.id),
   format: text("format").notNull(), // pdf, docx
   hadWatermark: boolean("had_watermark").default(false).notNull(),

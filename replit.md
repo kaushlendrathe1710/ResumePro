@@ -67,7 +67,7 @@ Preferred communication style: Simple, everyday language.
 - **otp_codes**: Temporary storage for email verification codes with expiration tracking
 - **resumes**: User-created resumes with title, template ID, and JSON-serialized resume data
 - **subscription_plans**: Configurable plans with download limits, watermark settings, Word export permissions
-- **user_subscriptions**: Links users to plans with validity periods and usage tracking
+- **user_subscriptions**: Links users to plans with validity periods, usage tracking, and Stripe payment IDs
 - **download_history**: Audit trail of resume downloads with timestamps and format tracking
 - **user_sessions**: PostgreSQL-based session store for Express sessions
 
@@ -125,9 +125,18 @@ Preferred communication style: Simple, everyday language.
 - Static file serving from dist/public directory in production
 - Allowlist approach for bundling specific server dependencies to reduce cold start times
 
+**Payment Processing:**
+- Stripe integration for subscription payments via Replit's Stripe connector
+- stripe-replit-sync library for webhook management and data synchronization
+- Checkout sessions redirect to /dashboard with success/cancel status
+- Webhook handler at /api/stripe/webhook for server-side payment verification
+- Automatic subscription activation via webhook or client-side verification
+- Products and prices synced from Stripe dashboard
+
 **Third-Party Libraries:**
 - Lucide React for iconography
 - Framer Motion for animations (currently imported but minimal usage)
 - Sonner for toast notifications
 - date-fns for date manipulation
 - class-variance-authority for component variant management
+- Stripe SDK for payment processing

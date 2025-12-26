@@ -96,6 +96,7 @@ export const userSubscriptions = pgTable("user_subscriptions", {
   endDate: timestamp("end_date"), // null for forever plans
   isActive: boolean("is_active").default(true).notNull(),
   paymentReference: text("payment_reference"), // For manual payment tracking
+  stripePaymentId: text("stripe_payment_id"), // Stripe checkout session ID
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

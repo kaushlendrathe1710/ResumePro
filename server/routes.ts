@@ -971,6 +971,196 @@ export async function registerRoutes(
     }
   });
 
+  // ============= STRIPE PAYMENT ROUTES =============
+
+  // Get Stripe publishable key
+  app.get("/api/stripe/config", async (req, res) => {
+    try {
+      const { getStripePublishableKey } = await import('./stripeClient');
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Error getting Stripe config:", error);
+      res.status(500).json({ error: "Stripe not configured" });
+    }
+  });
+
+  // Create checkout session for subscription purchase
+  app.post("/api/stripe/checkout", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const { planId, priceId } = req.body;
+
+    if (!planId || !priceId) {
+      return res.status(400).json({ error: "Plan ID and Price ID are required" });
+    }
+
+    try {
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const plan = await storage.getSubscriptionPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      let baseUrl: string;
+      const replitDomains = process.env.REPLIT_DOMAINS?.split(',')[0];
+      if (replitDomains) {
+        baseUrl = `https://${replitDomains}`;
+      } else {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+        const host = req.get('host');
+        baseUrl = `${protocol}://${host}`;
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/dashboard?canceled=true`,
+        customer_email: user.email,
+        metadata: {
+          userId: user.id,
+          planId: plan.id,
+          planName: plan.name,
+        },
+        client_reference_id: user.id,
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // Verify checkout session and activate subscription
+  app.post("/api/stripe/verify-session", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: "Session ID is required" });
+    }
+
+    try {
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ error: "Payment not completed" });
+      }
+
+      const userId = session.metadata?.userId || session.client_reference_id;
+      const planId = session.metadata?.planId;
+
+      if (!userId || !planId) {
+        return res.status(400).json({ error: "Invalid session metadata" });
+      }
+
+      if (userId !== req.session.userId) {
+        return res.status(403).json({ error: "Session does not belong to current user" });
+      }
+
+      const existingSub = await storage.getUserSubscriptionWithPlan(userId);
+      if (existingSub && existingSub.subscription.stripePaymentId === session.id) {
+        return res.json({ 
+          success: true, 
+          subscription: existingSub.subscription,
+          plan: existingSub.plan,
+          alreadyActivated: true
+        });
+      }
+
+      const plan = await storage.getSubscriptionPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      if (existingSub?.subscription.isActive) {
+        await storage.deactivateUserSubscription(existingSub.subscription.id);
+      }
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + plan.validityDays);
+
+      const newSubscription = await storage.createUserSubscription({
+        userId,
+        planId: plan.id,
+        startDate,
+        endDate,
+        isActive: true,
+        downloadsRemaining: plan.downloadLimit,
+        stripePaymentId: session.id,
+      });
+
+      res.json({ 
+        success: true, 
+        subscription: newSubscription,
+        plan: {
+          name: plan.name,
+          downloadLimit: plan.downloadLimit,
+          hasWatermark: plan.hasWatermark,
+          allowWordExport: plan.allowWordExport,
+        }
+      });
+    } catch (error) {
+      console.error("Error verifying checkout session:", error);
+      res.status(500).json({ error: "Failed to verify checkout session" });
+    }
+  });
+
+  // Get Stripe products and prices for pricing page
+  app.get("/api/stripe/products", async (req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+
+      const products = await stripe.products.list({ active: true, limit: 100 });
+      const prices = await stripe.prices.list({ active: true, limit: 100 });
+
+      const productData = products.data.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        metadata: product.metadata,
+        prices: prices.data
+          .filter(price => price.product === product.id)
+          .map(price => ({
+            id: price.id,
+            unitAmount: price.unit_amount,
+            currency: price.currency,
+            type: price.type,
+          })),
+      }));
+
+      res.json({ products: productData });
+    } catch (error) {
+      console.error("Error fetching Stripe products:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
   // Cleanup expired OTPs periodically (run every hour)
   setInterval(async () => {
     try {

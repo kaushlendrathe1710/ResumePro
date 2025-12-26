@@ -178,6 +178,19 @@ interface Plan {
   allowWordExport: boolean;
 }
 
+interface StripeProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  metadata: Record<string, string>;
+  prices: {
+    id: string;
+    unitAmount: number | null;
+    currency: string;
+    type: string;
+  }[];
+}
+
 export default function Dashboard() {
   const [_, setLocation] = useLocation();
   const [user, setUser] = useState<UserData | null>(null);
@@ -187,6 +200,8 @@ export default function Dashboard() {
   const [deleteResumeId, setDeleteResumeId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
+  const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
+  const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState<string>("all");
 
@@ -204,6 +219,39 @@ export default function Dashboard() {
     fetchResumes();
     fetchSubscription();
     fetchPlans();
+    fetchStripeProducts();
+
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+    const sessionId = params.get('session_id');
+    const canceled = params.get('canceled');
+
+    if (success === 'true' && sessionId) {
+      fetch('/api/stripe/verify-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            toast.success('Payment successful! Your subscription is now active.');
+            fetchSubscription();
+            setActiveTab('subscription');
+          } else {
+            toast.error(data.error || 'Failed to verify payment');
+          }
+        })
+        .catch(() => {
+          toast.error('Failed to verify payment');
+        })
+        .finally(() => {
+          window.history.replaceState({}, '', '/dashboard');
+        });
+    } else if (canceled === 'true') {
+      toast.info('Payment was canceled');
+      window.history.replaceState({}, '', '/dashboard');
+    }
   }, []);
 
   const checkAuth = async () => {
@@ -259,6 +307,55 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch plans:", error);
+    }
+  };
+
+  const fetchStripeProducts = async () => {
+    try {
+      const response = await fetch("/api/stripe/products");
+      if (response.ok) {
+        const data = await response.json();
+        setStripeProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch Stripe products:", error);
+    }
+  };
+
+  const handlePurchasePlan = async (plan: Plan) => {
+    const matchingProduct = stripeProducts.find(
+      (p) => p.metadata.planId === plan.id || p.name.toLowerCase() === plan.name.toLowerCase()
+    );
+
+    if (!matchingProduct || matchingProduct.prices.length === 0) {
+      toast.error("This plan is not available for purchase yet. Please contact support.");
+      return;
+    }
+
+    const priceId = matchingProduct.prices[0].id;
+
+    try {
+      setPurchasingPlanId(plan.id);
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id, priceId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create checkout session");
+      }
+
+      const { url } = await response.json();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error: any) {
+      console.error("Purchase error:", error);
+      toast.error(error.message || "Failed to start checkout. Please try again.");
+    } finally {
+      setPurchasingPlanId(null);
     }
   };
 
@@ -741,9 +838,24 @@ export default function Dashboard() {
 
                         {subscription?.subscription?.planName !== plan.name && plan.price > 0 && (
                           <div className="pt-4 border-t">
-                            <p className="text-xs text-slate-500 mb-2">
-                              Contact admin to upgrade to this plan
-                            </p>
+                            <Button
+                              className="w-full"
+                              onClick={() => handlePurchasePlan(plan)}
+                              disabled={purchasingPlanId === plan.id}
+                              data-testid={`button-buy-plan-${plan.id}`}
+                            >
+                              {purchasingPlanId === plan.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Buy Now - {plan.price} AED
+                                </>
+                              )}
+                            </Button>
                           </div>
                         )}
                       </div>

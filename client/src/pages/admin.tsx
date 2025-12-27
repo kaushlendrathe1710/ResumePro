@@ -50,6 +50,8 @@ function PlanForm({
   const [formData, setFormData] = useState({
     name: plan?.name || "",
     price: plan?.price || 0,
+    currency: plan?.currency || "INR",
+    region: plan?.region || "all",
     downloadLimit: plan?.downloadLimit || 1,
     validityDays: plan?.validityDays || 0,
     hasWatermark: plan?.hasWatermark ?? true,
@@ -82,7 +84,7 @@ function PlanForm({
           />
         </div>
         <div>
-          <Label className="text-slate-300 mb-2 block">Price (AED)</Label>
+          <Label className="text-slate-300 mb-2 block">Price</Label>
           <Input
             type="number"
             value={formData.price}
@@ -90,6 +92,34 @@ function PlanForm({
             className="bg-slate-700 border-slate-600 text-white"
             data-testid="input-plan-price"
           />
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Currency</Label>
+          <select
+            value={formData.currency}
+            onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+            className="w-full h-9 rounded-md border border-slate-600 bg-slate-700 text-white px-3"
+            data-testid="select-plan-currency"
+          >
+            <option value="INR">INR (Indian Rupee)</option>
+            <option value="USD">USD (US Dollar)</option>
+            <option value="EUR">EUR (Euro)</option>
+            <option value="GBP">GBP (British Pound)</option>
+            <option value="AED">AED (UAE Dirham)</option>
+          </select>
+        </div>
+        <div>
+          <Label className="text-slate-300 mb-2 block">Region</Label>
+          <select
+            value={formData.region}
+            onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+            className="w-full h-9 rounded-md border border-slate-600 bg-slate-700 text-white px-3"
+            data-testid="select-plan-region"
+          >
+            <option value="all">All Regions</option>
+            <option value="india">India Only</option>
+            <option value="international">International Only</option>
+          </select>
         </div>
         <div>
           <Label className="text-slate-300 mb-2 block">Download Limit</Label>
@@ -184,6 +214,8 @@ interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
+  currency: string;
+  region: string;
   downloadLimit: number;
   validityDays: number;
   hasWatermark: boolean;

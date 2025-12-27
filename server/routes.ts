@@ -170,9 +170,15 @@ export async function registerRoutes(
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = await storage.getUser(req.session.userId);
+    let user = await storage.getUser(req.session.userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
+    }
+
+    // Backfill region for existing users who have phone but no region set
+    if (user.phone && !user.region) {
+      const { country, region } = detectCountryFromPhone(user.phone);
+      user = await storage.updateUser(user.id, { country, region });
     }
 
     const needsRegistration = !user.name || !user.phone;

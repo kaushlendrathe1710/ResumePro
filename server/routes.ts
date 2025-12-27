@@ -716,16 +716,36 @@ export async function registerRoutes(
   app.get("/api/plans", async (req, res) => {
     try {
       const plans = await storage.getActivePlans();
-      res.json({ plans: plans.map(p => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        downloadLimit: p.downloadLimit,
-        validityDays: p.validityDays,
-        hasWatermark: p.hasWatermark,
-        allowWordExport: p.allowWordExport,
-        sortOrder: p.sortOrder,
-      }))});
+      
+      // Get user's region if authenticated (default to "international")
+      let userRegion = "international";
+      if (req.session.userId) {
+        const user = await storage.getUser(req.session.userId);
+        if (user?.region) {
+          userRegion = user.region;
+        }
+      }
+      
+      // Filter plans by user's region (include "all" region plans)
+      const filteredPlans = plans.filter(p => 
+        p.region === "all" || p.region === userRegion
+      );
+      
+      res.json({ 
+        plans: filteredPlans.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          currency: p.currency,
+          region: p.region,
+          downloadLimit: p.downloadLimit,
+          validityDays: p.validityDays,
+          hasWatermark: p.hasWatermark,
+          allowWordExport: p.allowWordExport,
+          sortOrder: p.sortOrder,
+        })),
+        userRegion 
+      });
     } catch (error) {
       console.error("Error fetching plans:", error);
       res.status(500).json({ error: "Failed to fetch plans" });
@@ -1010,7 +1030,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
 
-      const plan = await storage.getSubscriptionPlan(planId);
+      const plan = await storage.getPlan(planId);
       if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
       }
@@ -1095,7 +1115,7 @@ export async function registerRoutes(
         });
       }
 
-      const plan = await storage.getSubscriptionPlan(planId);
+      const plan = await storage.getPlan(planId);
       if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
       }

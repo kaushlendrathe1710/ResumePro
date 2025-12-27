@@ -172,10 +172,25 @@ interface Plan {
   id: string;
   name: string;
   price: number;
+  currency: string;
+  region: string;
   downloadLimit: number;
   validityDays: number;
   hasWatermark: boolean;
   allowWordExport: boolean;
+}
+
+function formatPrice(price: number, currency: string): string {
+  if (price === 0) return "Free";
+  const currencySymbols: Record<string, string> = {
+    "INR": "₹",
+    "USD": "$",
+    "EUR": "€",
+    "GBP": "£",
+    "AED": "AED ",
+  };
+  const symbol = currencySymbols[currency] || currency + " ";
+  return `${symbol}${price}`;
 }
 
 interface StripeProduct {
@@ -809,7 +824,7 @@ export default function Dashboard() {
                           <div>
                             <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
                             <p className="text-3xl font-bold text-primary mt-1">
-                              {plan.price === 0 ? "Free" : `${plan.price} AED`}
+                              {formatPrice(plan.price, plan.currency)}
                             </p>
                           </div>
                           {subscription?.subscription?.planName === plan.name && (
@@ -852,7 +867,7 @@ export default function Dashboard() {
                               ) : (
                                 <>
                                   <CreditCard className="w-4 h-4 mr-2" />
-                                  Buy Now - {plan.price} AED
+                                  Buy Now - {formatPrice(plan.price, plan.currency)}
                                 </>
                               )}
                             </Button>

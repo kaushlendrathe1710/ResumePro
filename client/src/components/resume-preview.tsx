@@ -162,11 +162,26 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
       await recordDownload("pdf");
       
       const element = printRef.current;
+      
+      await document.fonts.ready;
+      
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        allowTaint: true,
+        onclone: (clonedDoc, clonedElement) => {
+          const allTextElements = clonedElement.querySelectorAll('p, span, h1, h2, h3, h4, h5, h6, li, div, td, th');
+          allTextElements.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            const computedStyle = window.getComputedStyle(htmlEl);
+            htmlEl.style.wordSpacing = '0.05em';
+            htmlEl.style.letterSpacing = '0';
+            htmlEl.style.fontKerning = 'normal';
+            htmlEl.style.textRendering = 'optimizeLegibility';
+          });
+        },
       });
       
       const imgData = canvas.toDataURL('image/png');

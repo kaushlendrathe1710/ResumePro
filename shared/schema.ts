@@ -70,6 +70,7 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   price: integer("price").default(0).notNull(), // Price in smallest currency unit (paise/cents)
   currency: text("currency").default("INR").notNull(), // Currency code: INR, USD, etc.
   region: text("region").default("all").notNull(), // "india", "international", or "all"
+  stripePriceId: text("stripe_price_id"), // Stripe Price ID for checkout (e.g., price_xxx)
   downloadLimit: integer("download_limit").default(1).notNull(), // Number of downloads allowed
   validityDays: integer("validity_days").default(0).notNull(), // 0 = forever, else days
   hasWatermark: boolean("has_watermark").default(true).notNull(), // Watermark on PDF

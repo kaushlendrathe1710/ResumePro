@@ -52,6 +52,7 @@ function PlanForm({
     price: plan?.price || 0,
     currency: plan?.currency || "INR",
     region: plan?.region || "all",
+    stripePriceId: plan?.stripePriceId || "",
     downloadLimit: plan?.downloadLimit || 1,
     validityDays: plan?.validityDays || 0,
     hasWatermark: plan?.hasWatermark ?? true,
@@ -120,6 +121,16 @@ function PlanForm({
             <option value="india">India Only</option>
             <option value="international">International Only</option>
           </select>
+        </div>
+        <div className="md:col-span-2">
+          <Label className="text-slate-300 mb-2 block">Stripe Price ID</Label>
+          <Input
+            value={formData.stripePriceId}
+            onChange={(e) => setFormData({ ...formData, stripePriceId: e.target.value })}
+            placeholder="e.g., price_1ABC123xyz (from Stripe Dashboard)"
+            className="bg-slate-700 border-slate-600 text-white"
+            data-testid="input-stripe-price-id"
+          />
         </div>
         <div>
           <Label className="text-slate-300 mb-2 block">Download Limit</Label>

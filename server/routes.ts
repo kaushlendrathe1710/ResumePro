@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { initializeEmailTransporter, sendOtpEmail, generateOtp } from "./email";
+import { detectCountryFromPhone } from "./phone-utils";
 import { z } from "zod";
 import { insertUserSchema, insertOtpCodeSchema } from "@shared/schema";
 
@@ -145,11 +146,14 @@ export async function registerRoutes(
         phone: z.string().min(10, "Please enter a valid phone number with country code"),
       }).parse(req.body);
 
-      const user = await storage.updateUser(req.session.userId, { name, phone });
+      // Detect country from phone number for regional pricing
+      const { country, region } = detectCountryFromPhone(phone);
+
+      const user = await storage.updateUser(req.session.userId, { name, phone, country, region });
 
       res.json({ 
         success: true, 
-        user: { id: user.id, email: user.email, name: user.name, phone: user.phone }
+        user: { id: user.id, email: user.email, name: user.name, phone: user.phone, country: user.country, region: user.region }
       });
     } catch (error) {
       console.error("Error in complete-registration:", error);
@@ -175,7 +179,7 @@ export async function registerRoutes(
     const isAdmin = user.role === "admin" || user.role === "superadmin";
 
     res.json({ 
-      user: { id: user.id, email: user.email, name: user.name, phone: user.phone, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name, phone: user.phone, role: user.role, country: user.country, region: user.region },
       needsRegistration,
       isAdmin
     });

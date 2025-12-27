@@ -482,6 +482,9 @@ export async function registerRoutes(
       const planData = z.object({
         name: z.string().min(1),
         price: z.number().min(0),
+        currency: z.string().optional(),
+        region: z.string().optional(),
+        stripePriceId: z.string().optional(),
         downloadLimit: z.number().min(1),
         validityDays: z.number().min(0),
         hasWatermark: z.boolean(),
@@ -519,6 +522,9 @@ export async function registerRoutes(
       const planData = z.object({
         name: z.string().min(1).optional(),
         price: z.number().min(0).optional(),
+        currency: z.string().optional(),
+        region: z.string().optional(),
+        stripePriceId: z.string().optional(),
         downloadLimit: z.number().min(1).optional(),
         validityDays: z.number().min(0).optional(),
         hasWatermark: z.boolean().optional(),

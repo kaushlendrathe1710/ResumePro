@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   phone: text("phone"),
+  country: text("country"), // ISO country code detected from phone (e.g., "IN", "US")
+  region: text("region").default("international"), // "india" or "international" for pricing
   role: text("role").default("user").notNull(), // user, admin, superadmin
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -65,7 +67,9 @@ export type Resume = typeof resumes.$inferSelect;
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(), // Basic, Premium, etc.
-  price: integer("price").default(0).notNull(), // Price in AED (0 for free)
+  price: integer("price").default(0).notNull(), // Price in smallest currency unit (paise/cents)
+  currency: text("currency").default("INR").notNull(), // Currency code: INR, USD, etc.
+  region: text("region").default("all").notNull(), // "india", "international", or "all"
   downloadLimit: integer("download_limit").default(1).notNull(), // Number of downloads allowed
   validityDays: integer("validity_days").default(0).notNull(), // 0 = forever, else days
   hasWatermark: boolean("has_watermark").default(true).notNull(), // Watermark on PDF

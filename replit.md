@@ -133,6 +133,16 @@ Preferred communication style: Simple, everyday language.
 - Automatic subscription activation via webhook or client-side verification
 - Products and prices synced from Stripe dashboard
 
+**Country-Specific Pricing:**
+- Region detection from phone number using libphonenumber-js
+- Users classified as "india" or "international" based on phone format
+- 10-digit numbers starting with 6-9 assumed to be Indian mobile numbers
+- Subscription plans filtered by user's detected region
+- Each plan has currency field (INR, USD, EUR, etc.) for proper display
+- Admins create separate Stripe products/prices for each currency in Stripe dashboard
+- Dashboard displays prices with localized currency symbols (₹, $, etc.)
+- Existing users have region auto-detected on login if not previously set
+
 **Third-Party Libraries:**
 - Lucide React for iconography
 - Framer Motion for animations (currently imported but minimal usage)

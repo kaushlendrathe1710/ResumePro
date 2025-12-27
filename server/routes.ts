@@ -590,6 +590,7 @@ export async function registerRoutes(
           userName: userMap.get(s.userId)?.name,
           planName: planMap.get(s.planId)?.name,
           planPrice: planMap.get(s.planId)?.price,
+          planCurrency: planMap.get(s.planId)?.currency,
         }))
       });
     } catch (error) {

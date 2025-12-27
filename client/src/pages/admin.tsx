@@ -275,6 +275,7 @@ interface UserSubscription {
   userName?: string | null;
   planName?: string;
   planPrice?: number;
+  planCurrency?: string;
 }
 
 export default function AdminDashboard() {
@@ -1064,7 +1065,7 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex flex-wrap gap-4 text-sm text-slate-400">
                             <span className="flex items-center gap-1">
-                              <span className="text-white font-medium">{plan.price === 0 ? "Free" : `${plan.price} AED`}</span>
+                              <span className="text-white font-medium">{plan.price === 0 ? "Free" : `${plan.price} ${plan.currency || "INR"}`}</span>
                             </span>
                             <span>{plan.downloadLimit} downloads</span>
                             <span>{plan.validityDays === 0 ? "Lifetime" : `${plan.validityDays} days`}</span>
@@ -1166,7 +1167,7 @@ export default function AdminDashboard() {
                           <TableCell>
                             <div>
                               <p className="text-white">{sub.planName}</p>
-                              <p className="text-sm text-slate-400">{sub.planPrice === 0 ? "Free" : `${sub.planPrice} AED`}</p>
+                              <p className="text-sm text-slate-400">{sub.planPrice === 0 ? "Free" : `${sub.planPrice} ${sub.planCurrency || "INR"}`}</p>
                             </div>
                           </TableCell>
                           <TableCell className="text-slate-300">
@@ -1271,7 +1272,7 @@ export default function AdminDashboard() {
                           <SelectContent className="bg-slate-700 border-slate-600">
                             {plans.filter(p => p.isActive).map((p) => (
                               <SelectItem key={p.id} value={p.id} className="text-white">
-                                {p.name} ({p.price === 0 ? "Free" : `${p.price} AED`})
+                                {p.name} ({p.price === 0 ? "Free" : `${p.price} ${p.currency || "INR"}`})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1415,7 +1416,7 @@ export default function AdminDashboard() {
                 <SelectContent className="bg-slate-700 border-slate-600">
                   {plans.filter(p => p.isActive).map((p) => (
                     <SelectItem key={p.id} value={p.id} className="text-white">
-                      {p.name} ({p.price === 0 ? "Free" : `${p.price} AED`})
+                      {p.name} ({p.price === 0 ? "Free" : `${p.price} ${p.currency || "INR"}`})
                     </SelectItem>
                   ))}
                 </SelectContent>

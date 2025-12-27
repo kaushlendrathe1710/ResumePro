@@ -205,15 +205,15 @@ app.use(
   session({
     store: new DrizzleSessionStore(),
     secret: process.env.SESSION_SECRET || "resumake-secret-key-2024",
-    resave: true,
+    resave: false,
     saveUninitialized: false,
     rolling: true,
     name: "resumake.sid",
     cookie: {
       httpOnly: true,
-      secure: isProduction,
+      secure: false, // Allow cookies in development iframe
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: isProduction ? "none" : "lax",
+      sameSite: "lax",
       path: "/",
     },
   }),

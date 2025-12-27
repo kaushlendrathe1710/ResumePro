@@ -115,7 +115,8 @@ export function getOrderedSections(data: ResumeData): { key: string; title: stri
   const order = data.sectionOrder || defaultSections.map(s => s.key);
   const visibility = data.sectionVisibility || {};
   
-  return order
+  // Get sections that are in the order array
+  const orderedSections = order
     .map(key => {
       const section = allSections.find(s => s.key === key);
       if (!section) return null;
@@ -125,6 +126,17 @@ export function getOrderedSections(data: ResumeData): { key: string; title: stri
       };
     })
     .filter((s): s is NonNullable<typeof s> => s !== null);
+  
+  // Append any custom sections that aren't in the order array yet
+  const orderedKeys = new Set(order);
+  const missingCustomSections = customSections
+    .filter(s => !orderedKeys.has(s.key))
+    .map(s => ({
+      ...s,
+      enabled: visibility[s.key] !== false,
+    }));
+  
+  return [...orderedSections, ...missingCustomSections];
 }
 
 // Section type labels for UI

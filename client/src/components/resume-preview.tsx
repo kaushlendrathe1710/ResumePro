@@ -175,11 +175,11 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
           const allTextElements = clonedElement.querySelectorAll('p, span, h1, h2, h3, h4, h5, h6, li, div, td, th');
           allTextElements.forEach((el) => {
             const htmlEl = el as HTMLElement;
-            const computedStyle = window.getComputedStyle(htmlEl);
-            htmlEl.style.wordSpacing = '0.05em';
-            htmlEl.style.letterSpacing = '0';
+            htmlEl.style.wordSpacing = '0.15em';
+            htmlEl.style.letterSpacing = '0.02em';
             htmlEl.style.fontKerning = 'normal';
-            htmlEl.style.textRendering = 'optimizeLegibility';
+            htmlEl.style.textRendering = 'geometricPrecision';
+            htmlEl.style.whiteSpace = 'pre-wrap';
           });
         },
       });
@@ -384,7 +384,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, templateId, 
       <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-800">
         <div className="relative shadow-2xl transform transition-transform origin-top scale-[0.5] sm:scale-[0.6] md:scale-[0.7] lg:scale-[0.8] xl:scale-[0.9] 2xl:scale-100">
            {/* Print Wrapper */}
-           <div ref={printRef} className="bg-white w-[210mm] min-h-[297mm] shadow-white/5 relative">
+           <div 
+             ref={printRef} 
+             className="bg-white w-[210mm] min-h-[297mm] shadow-white/5 relative"
+             style={{ 
+               wordSpacing: '0.1em', 
+               letterSpacing: 'normal',
+               fontKerning: 'normal',
+               textRendering: 'optimizeLegibility',
+               WebkitFontSmoothing: 'antialiased'
+             }}
+           >
              {renderTemplate()}
              {hasWatermark() && <WatermarkOverlay />}
            </div>

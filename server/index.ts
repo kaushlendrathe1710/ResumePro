@@ -211,9 +211,9 @@ app.use(
     name: "resumake.sid",
     cookie: {
       httpOnly: true,
-      secure: false, // Allow cookies in development iframe
+      secure: isProduction, // true in production (HTTPS), false in development
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax", // "none" for cross-site in production
       path: "/",
     },
   }),

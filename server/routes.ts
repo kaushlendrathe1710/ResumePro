@@ -113,7 +113,8 @@ export async function registerRoutes(
       }
 
       // Check if user needs to complete registration (no name or phone)
-      const needsRegistration = !user.name || !user.phone;
+      // Super admins skip this check
+      const needsRegistration = user.role !== "superadmin" && (!user.name || !user.phone);
       const isAdmin = user.role === "admin" || user.role === "superadmin";
 
       // Set session
@@ -181,7 +182,8 @@ export async function registerRoutes(
       user = await storage.updateUser(user.id, { country, region });
     }
 
-    const needsRegistration = !user.name || !user.phone;
+    // Super admins skip registration check
+    const needsRegistration = user.role !== "superadmin" && (!user.name || !user.phone);
     const isAdmin = user.role === "admin" || user.role === "superadmin";
 
     res.json({ 

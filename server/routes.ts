@@ -839,6 +839,19 @@ export async function registerRoutes(
 
     try {
       const format = (req.query.format as string) || "pdf";
+      
+      // Admins and super admins have unlimited downloads without restrictions
+      const user = await storage.getUser(req.session.userId);
+      if (user && (user.role === "admin" || user.role === "superadmin")) {
+        return res.json({
+          canDownload: true,
+          hasWatermark: false,
+          watermarkText: null,
+          downloadsRemaining: 999999,
+          isAdmin: true,
+        });
+      }
+      
       let subWithPlan = await storage.getUserSubscriptionWithPlan(req.session.userId);
       
       // If no subscription, auto-assign default plan
@@ -910,17 +923,23 @@ export async function registerRoutes(
         hadWatermark: z.boolean(),
       }).parse(req.body);
 
+      // Check if user is admin - admins don't consume credits
+      const user = await storage.getUser(req.session.userId);
+      const isAdmin = user && (user.role === "admin" || user.role === "superadmin");
+      
       // Record the download
       await storage.recordDownload({
         userId: req.session.userId,
         resumeId,
         subscriptionId,
         format,
-        hadWatermark,
+        hadWatermark: isAdmin ? false : hadWatermark,
       });
 
-      // Decrement downloads remaining
-      await storage.decrementDownloadsRemaining(subscriptionId);
+      // Only decrement downloads for non-admin users
+      if (!isAdmin) {
+        await storage.decrementDownloadsRemaining(subscriptionId);
+      }
 
       res.json({ success: true });
     } catch (error) {
@@ -941,6 +960,20 @@ export async function registerRoutes(
       }).parse(req.body);
 
       const userId = req.session.userId;
+      
+      // Check if user is admin - admins have unlimited downloads
+      const user = await storage.getUser(userId);
+      const isAdmin = user && (user.role === "admin" || user.role === "superadmin");
+      
+      if (isAdmin) {
+        // Admins don't need subscription checks - just record the download
+        return res.json({ 
+          success: true, 
+          downloadsRemaining: 999999,
+          hasWatermark: false,
+          isAdmin: true
+        });
+      }
 
       // Check for active subscription
       let subWithPlan = await storage.getUserSubscriptionWithPlan(userId);

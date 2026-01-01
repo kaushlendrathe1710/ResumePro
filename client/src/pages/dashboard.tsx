@@ -966,39 +966,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === "profile" && (
-            <div className="max-w-2xl">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-3xl font-bold">
-                      {user?.name?.charAt(0).toUpperCase() || "U"}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">{user?.name || "User"}</h3>
-                      <p className="text-slate-500">{user?.email}</p>
-                      {user?.phone && <p className="text-slate-500">{user?.phone}</p>}
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <h4 className="font-semibold text-slate-800 mb-4">Account Statistics</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-slate-50 rounded-xl p-4">
-                        <p className="text-3xl font-bold text-primary">{resumes.length}</p>
-                        <p className="text-slate-600 text-sm">Resumes Created</p>
-                      </div>
-                      <div className="bg-slate-50 rounded-xl p-4">
-                        <p className="text-3xl font-bold text-emerald-600">100+</p>
-                        <p className="text-slate-600 text-sm">Templates Available</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <ProfileSection user={user} resumes={resumes} onProfileUpdate={() => window.location.reload()} />
           )}
         </main>
       </div>
@@ -1023,6 +991,137 @@ export default function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// Profile Section Component
+function ProfileSection({ 
+  user, 
+  resumes, 
+  onProfileUpdate 
+}: { 
+  user: { id: string; email: string; name?: string | null; phone?: string | null; role: string; country?: string | null; region?: string | null } | null;
+  resumes: Array<{ id: string }>;
+  onProfileUpdate: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editName, setEditName] = useState(user?.name || "");
+  const [editPhone, setEditPhone] = useState(user?.phone || "");
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: editName || undefined, 
+          phone: editPhone || undefined 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      toast.success("Profile updated successfully");
+      setIsEditing(false);
+      onProfileUpdate();
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle>Personal Information</CardTitle>
+          {!isEditing && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsEditing(true)}
+              data-testid="button-edit-profile"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Name</label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Enter your name"
+                  data-testid="input-profile-name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Phone Number</label>
+                <Input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="Enter phone (e.g., +91 9876543210)"
+                  data-testid="input-profile-phone"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Your phone number determines which regional plans you see
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSave} disabled={isSaving} data-testid="button-save-profile">
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-6">
+                <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-3xl font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">{user?.name || "Not set"}</h3>
+                  <p className="text-slate-500">{user?.email}</p>
+                  {user?.phone && <p className="text-slate-500">{user?.phone}</p>}
+                  {user?.region && (
+                    <Badge variant="secondary" className="mt-1">
+                      {user.region === "india" ? "India" : "International"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className="pt-4 border-t">
+                <h4 className="font-semibold text-slate-800 mb-4">Account Statistics</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-3xl font-bold text-primary">{resumes.length}</p>
+                    <p className="text-slate-600 text-sm">Resumes Created</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-3xl font-bold text-emerald-600">100+</p>
+                    <p className="text-slate-600 text-sm">Templates Available</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

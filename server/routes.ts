@@ -203,6 +203,47 @@ export async function registerRoutes(
     });
   });
 
+  // Update user profile (for super admins and regular users)
+  app.patch("/api/user/profile", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { name, phone } = z.object({
+        name: z.string().min(1).optional(),
+        phone: z.string().min(1).optional(),
+      }).parse(req.body);
+
+      const updateData: { name?: string; phone?: string; country?: string | null; region?: string } = {};
+      
+      if (name) updateData.name = name;
+      if (phone) {
+        updateData.phone = phone;
+        const { country, region } = detectCountryFromPhone(phone);
+        updateData.country = country;
+        updateData.region = region;
+      }
+
+      const user = await storage.updateUser(req.session.userId, updateData);
+      
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          name: user.name, 
+          phone: user.phone, 
+          country: user.country, 
+          region: user.region 
+        } 
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   // Resume routes (protected)
   
   // Create resume

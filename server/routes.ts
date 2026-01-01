@@ -234,6 +234,7 @@ export async function registerRoutes(
           email: user.email, 
           name: user.name, 
           phone: user.phone, 
+          role: user.role,
           country: user.country, 
           region: user.region 
         } 

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { 
   Plus, FileText, LogOut, Loader2, 
   FolderOpen, Download, FileDown, Edit, Trash2,
-  LayoutTemplate, User, Clock, Sparkles, CreditCard, Crown, Search
+  LayoutTemplate, User, Clock, Sparkles, CreditCard, Crown, Search, Shield
 } from "lucide-react";
 import { toast } from "sonner";
 import { templates, TemplateConfig, allLayouts, LayoutType } from "@/lib/templates";
@@ -133,6 +133,9 @@ interface UserData {
   email: string;
   name: string | null;
   phone: string | null;
+  role: string;
+  country: string | null;
+  region: string | null;
 }
 
 interface Resume {
@@ -499,6 +502,14 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {(user?.role === "admin" || user?.role === "superadmin") && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="border-amber-500 text-amber-600" data-testid="button-switch-admin-mode">
+                    <Shield className="w-4 h-4 mr-2" />
+                    {user?.role === "superadmin" ? "Super Admin Mode" : "Admin Mode"}
+                  </Button>
+                </Link>
+              )}
               <div className="text-right mr-2">
                 <p className="text-sm font-medium text-slate-900">{user?.name || "User"}</p>
                 <p className="text-xs text-slate-500">{user?.email}</p>

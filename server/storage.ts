@@ -288,11 +288,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
-    // Deactivate any existing active subscriptions for this user
+    // Get existing subscriptions for this user
+    const existingSubs = await db
+      .select()
+      .from(userSubscriptions)
+      .where(eq(userSubscriptions.userId, subscription.userId));
+    
+    // Delete related download history first (to respect foreign key constraint)
+    for (const sub of existingSubs) {
+      await db.delete(downloadHistory).where(eq(downloadHistory.subscriptionId, sub.id));
+    }
+    
+    // Delete any existing subscriptions for this user (enforce one plan per user)
     await db
-      .update(userSubscriptions)
-      .set({ isActive: false })
-      .where(and(eq(userSubscriptions.userId, subscription.userId), eq(userSubscriptions.isActive, true)));
+      .delete(userSubscriptions)
+      .where(eq(userSubscriptions.userId, subscription.userId));
     
     const [newSubscription] = await db.insert(userSubscriptions).values(subscription).returning();
     return newSubscription;
